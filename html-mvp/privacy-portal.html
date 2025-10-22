@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Privacidade - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">QSM-H</div>
+                <ul class="navbar-menu">
+                    <li><a href="#" id="dashboardLink">Dashboard</a></li>
+                    <li><a href="privacy-portal.html">Privacidade</a></li>
+                    <li><a href="#" onclick="logout(); return false;">Sair</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Portal de Privacidade -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Portal de Privacidade LGPD</h2>
+                    <p style="color: var(--text-gray); margin-top: 0.5rem;">
+                        Gerencie seus dados pessoais e exerça seus direitos garantidos pela LGPD
+                    </p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <span>
+                            <strong>Seus Direitos:</strong> Conforme a Lei Geral de Proteção de Dados (LGPD),
+                            você tem direito a acessar, corrigir, exportar e excluir seus dados pessoais a qualquer momento.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exportar Dados -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📥 Exportar Meus Dados</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-gray); margin-bottom: 1.5rem;">
+                        Baixe todos os seus dados pessoais armazenados em nosso sistema em formato JSON.
+                    </p>
+                    <button class="btn btn-primary" onclick="exportData()" id="exportBtn">
+                        Exportar Dados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logs de Auditoria -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📋 Histórico de Acessos</h3>
+                </div>
+                <div class="card-body">
+                    <p style="color: var(--text-gray); margin-bottom: 1.5rem;">
+                        Veja quem acessou seus dados e quando. Total transparência conforme a LGPD.
+                    </p>
+                    <div id="auditLogsContainer">
+                        <p class="text-center" style="color: var(--text-gray);">Carregando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Excluir Conta -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title" style="color: var(--danger-red);">🗑️ Excluir Minha Conta</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <span>
+                            <strong>Atenção:</strong> A exclusão da conta é permanente e irreversível.
+                            Todos os seus dados serão removidos do sistema em até 30 dias.
+                        </span>
+                    </div>
+                    <p style="color: var(--text-gray); margin-bottom: 1.5rem;">
+                        Ao solicitar a exclusão, você terá 30 dias para cancelar a solicitação antes que seus dados sejam permanentemente removidos.
+                    </p>
+                    <button class="btn btn-danger" onclick="requestDeletion()">
+                        Solicitar Exclusão de Conta
+                    </button>
+                </div>
+            </div>
+
+            <!-- Documentos Legais -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📄 Documentos Legais</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; gap: 1rem;">
+                        <a href="termos.html" target="_blank" class="btn btn-outline">
+                            Ver Termos de Uso
+                        </a>
+                        <a href="privacidade.html" target="_blank" class="btn btn-outline">
+                            Ver Política de Privacidade
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let currentProfile = null;
+
+        // Inicializar
+        async function init() {
+            showLoading('Carregando...');
+
+            const authData = await checkAuth();
+            if (!authData) {
+                hideLoading();
+                return;
+            }
+
+            currentUser = authData.user;
+            currentProfile = authData.profile;
+
+            // Atualizar link do dashboard
+            const dashboardLink = document.getElementById('dashboardLink');
+            if (currentProfile.role === 'patient') {
+                dashboardLink.href = 'paciente-dashboard.html';
+            } else {
+                dashboardLink.href = 'medico-dashboard.html';
+            }
+
+            await loadAuditLogs();
+            hideLoading();
+        }
+
+        // Carregar logs de auditoria
+        async function loadAuditLogs() {
+            try {
+                const { data, error } = await supabaseDB.getAuditLogs(currentUser.id, 20);
+
+                if (error) throw new Error(error);
+
+                const container = document.getElementById('auditLogsContainer');
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p class="text-center" style="color: var(--text-gray);">Nenhum acesso registrado ainda.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Ação</th>
+                                <th>Recurso</th>
+                                <th>IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.forEach(log => {
+                    const actionLabels = {
+                        'view': '👁️ Visualização',
+                        'create': '➕ Criação',
+                        'update': '✏️ Atualização',
+                        'delete': '🗑️ Exclusão',
+                        'export': '📥 Exportação',
+                        'access': '🔓 Acesso'
+                    };
+
+                    html += `
+                        <tr>
+                            <td>${formatDate(log.created_at)}</td>
+                            <td>${actionLabels[log.action] || log.action}</td>
+                            <td>${log.resource_type || '-'}</td>
+                            <td style="font-family: monospace;">${log.ip_address || '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error('Erro ao carregar logs:', error);
+                document.getElementById('auditLogsContainer').innerHTML =
+                    '<p class="text-center" style="color: var(--danger-red);">Erro ao carregar logs de auditoria.</p>';
+            }
+        }
+
+        // Exportar dados
+        async function exportData() {
+            const btn = document.getElementById('exportBtn');
+            setButtonLoading(btn, true);
+
+            try {
+                const { data, error } = await supabaseDB.exportUserData(currentUser.id);
+
+                if (error) throw new Error(error);
+
+                // Download do arquivo JSON
+                const filename = `qsmh-dados-${currentUser.id}-${new Date().toISOString().split('T')[0]}.json`;
+                downloadJSON(data, filename);
+
+                showSuccess('Dados exportados com sucesso!');
+
+            } catch (error) {
+                console.error('Erro ao exportar dados:', error);
+                showError('Erro ao exportar dados. Tente novamente.');
+            } finally {
+                setButtonLoading(btn, false);
+            }
+        }
+
+        // Solicitar exclusão
+        async function requestDeletion() {
+            const confirmed = confirm(
+                'Tem certeza que deseja excluir sua conta?\n\n' +
+                '⚠️ Esta ação não pode ser desfeita!\n\n' +
+                'Todos os seus dados serão permanentemente removidos em 30 dias.\n' +
+                'Você receberá um email de confirmação e poderá cancelar a solicitação durante este período.'
+            );
+
+            if (!confirmed) return;
+
+            const doubleCheck = prompt(
+                'Para confirmar, digite "EXCLUIR" (em maiúsculas):'
+            );
+
+            if (doubleCheck !== 'EXCLUIR') {
+                showWarning('Exclusão cancelada.');
+                return;
+            }
+
+            showLoading('Processando solicitação...');
+
+            try {
+                const { data, error } = await supabaseDB.requestAccountDeletion(currentUser.id);
+
+                if (error) throw new Error(error);
+
+                hideLoading();
+
+                alert(
+                    '✅ Solicitação de exclusão enviada com sucesso!\n\n' +
+                    'Você receberá um email de confirmação.\n' +
+                    'Seus dados serão excluídos em 30 dias.\n\n' +
+                    'Você será desconectado agora.'
+                );
+
+                await supabaseAuth.signOut();
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                hideLoading();
+                console.error('Erro ao solicitar exclusão:', error);
+                showError('Erro ao processar solicitação. Tente novamente.');
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

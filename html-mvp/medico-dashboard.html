@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Médico - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">QSM-H - Médico</div>
+                <ul class="navbar-menu">
+                    <li><a href="medico-dashboard.html">Dashboard</a></li>
+                    <li><a href="privacy-portal.html">Privacidade</a></li>
+                    <li><a href="#" onclick="logout(); return false;">Sair</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container">
+            <!-- Header -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="margin-bottom: 0.5rem;">Dr(a). <span id="doctorName">Carregando...</span></h2>
+                        <p style="color: var(--text-gray); margin: 0;">Painel de Monitoramento de Pacientes</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal('inviteModal')">
+                        Convidar Paciente
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalPatients">0</div>
+                    <div class="stat-label">Pacientes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="assessmentsThisWeek">0</div>
+                    <div class="stat-label">Avaliações Esta Semana</div>
+                </div>
+            </div>
+
+            <!-- Lista de Pacientes -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Meus Pacientes</h3>
+                </div>
+                <div class="card-body">
+                    <div id="patientsContainer">
+                        <p class="text-center" style="color: var(--text-gray); padding: 2rem 0;">
+                            Você ainda não tem pacientes. Clique em "Convidar Paciente" para adicionar.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal Convidar Paciente -->
+    <div class="modal" id="inviteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Convidar Paciente</h3>
+                <button class="modal-close" onclick="closeModal('inviteModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="inviteForm">
+                    <div class="form-group">
+                        <label for="patientEmail" class="form-label required">Email do Paciente</label>
+                        <input type="email" id="patientEmail" class="form-input" required placeholder="email@paciente.com">
+                        <div class="form-help">O paciente deve estar cadastrado no sistema como "Paciente"</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block" id="inviteBtn">
+                        Enviar Convite
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Paciente -->
+    <div class="modal" id="patientModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="patientModalTitle">Dados do Paciente</h3>
+                <button class="modal-close" onclick="closeModal('patientModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="patientModalContent">
+                <!-- Conteúdo dinâmico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let currentProfile = null;
+        let patients = [];
+
+        // Inicializar
+        async function init() {
+            showLoading('Carregando dados...');
+
+            const authData = await checkAuth('doctor');
+            if (!authData) {
+                hideLoading();
+                return;
+            }
+
+            currentUser = authData.user;
+            currentProfile = authData.profile;
+
+            document.getElementById('doctorName').textContent = currentProfile.full_name;
+
+            await loadPatients();
+            hideLoading();
+        }
+
+        // Carregar pacientes
+        async function loadPatients() {
+            try {
+                const { data, error } = await supabaseDB.getDoctorPatients(currentUser.id);
+
+                if (error) throw new Error(error);
+
+                patients = data || [];
+
+                // Atualizar stats
+                document.getElementById('totalPatients').textContent = patients.length;
+
+                // Calcular avaliações da semana
+                let assessmentsThisWeek = 0;
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+                for (const p of patients) {
+                    const { data: questionnaires } = await supabaseDB.getQuestionnaires(p.patient_id, 1);
+                    if (questionnaires && questionnaires.length > 0) {
+                        const lastDate = new Date(questionnaires[0].completed_at);
+                        if (lastDate >= oneWeekAgo) {
+                            assessmentsThisWeek++;
+                        }
+                    }
+                }
+
+                document.getElementById('assessmentsThisWeek').textContent = assessmentsThisWeek;
+
+                // Renderizar lista
+                await renderPatients();
+
+            } catch (error) {
+                console.error('Erro ao carregar pacientes:', error);
+                showError('Erro ao carregar lista de pacientes.');
+            }
+        }
+
+        // Renderizar pacientes
+        async function renderPatients() {
+            const container = document.getElementById('patientsContainer');
+
+            if (patients.length === 0) {
+                return;
+            }
+
+            let html = '<div style="display: grid; gap: 1.5rem;">';
+
+            for (const relationship of patients) {
+                const patient = relationship.profiles;
+                if (!patient) continue;
+
+                // Buscar última avaliação
+                const { data: questionnaires } = await supabaseDB.getQuestionnaires(patient.id, 1);
+                const latest = questionnaires && questionnaires.length > 0 ? questionnaires[0] : null;
+
+                html += `
+                    <div class="card" style="cursor: pointer; margin: 0;" onclick="viewPatient('${patient.id}')">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div style="flex: 1;">
+                                <h4 style="margin-bottom: 0.5rem;">${patient.full_name}</h4>
+                                <p style="color: var(--text-gray); margin: 0; font-size: 0.875rem;">${patient.email}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                ${latest ? `
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <strong style="color: var(--danger-red);">Dep: ${latest.dep_total}</strong>
+                                        <strong style="color: var(--warning-orange); margin-left: 1rem;">Ativ: ${latest.act_total}</strong>
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--text-gray);">
+                                        ${formatDateShort(latest.completed_at)}
+                                    </div>
+                                ` : `
+                                    <div style="color: var(--text-gray); font-size: 0.875rem;">
+                                        Sem avaliações
+                                    </div>
+                                `}
+                            </div>
+                            <button class="btn btn-outline" onclick="event.stopPropagation(); viewPatient('${patient.id}')">
+                                Ver Detalhes
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Ver detalhes do paciente
+        async function viewPatient(patientId) {
+            showLoading('Carregando dados do paciente...');
+
+            try {
+                const { profile, questionnaires, error } = await supabaseDB.getPatientDataForDoctor(currentUser.id, patientId);
+
+                if (error) throw new Error(error);
+
+                // Título do modal
+                document.getElementById('patientModalTitle').textContent = `Paciente: ${profile.full_name}`;
+
+                // Conteúdo
+                let content = `
+                    <div class="alert alert-info">
+                        <span><strong>Email:</strong> ${profile.email}</span>
+                    </div>
+                `;
+
+                if (questionnaires.length === 0) {
+                    content += '<p class="text-center" style="color: var(--text-gray); padding: 2rem 0;">Este paciente ainda não realizou nenhuma avaliação.</p>';
+                } else {
+                    // Última avaliação
+                    const latest = questionnaires[0];
+                    const depSeverity = getDepressionSeverity(latest.dep_total);
+                    const actSeverity = getActivationSeverity(latest.act_total);
+
+                    content += `
+                        <h4 style="margin: 2rem 0 1rem;">Última Avaliação</h4>
+                        <div class="score-container">
+                            <div class="score-box depression">
+                                <div class="score-label">Depressão</div>
+                                <div class="score-value">${latest.dep_total}<span style="font-size: 1.5rem;">/27</span></div>
+                                <div class="score-severity">${depSeverity.label}</div>
+                            </div>
+                            <div class="score-box activation">
+                                <div class="score-label">Ativação</div>
+                                <div class="score-value">${latest.act_total}<span style="font-size: 1.5rem;">/27</span></div>
+                                <div class="score-severity">${actSeverity.label}</div>
+                            </div>
+                            <div class="score-box combined">
+                                <div class="score-label">Total</div>
+                                <div class="score-value">${latest.combined_total}<span style="font-size: 1.5rem;">/54</span></div>
+                            </div>
+                        </div>
+
+                        <h4 style="margin: 2rem 0 1rem;">Evolução</h4>
+                        <canvas id="patientChart" width="800" height="400"></canvas>
+
+                        <h4 style="margin: 2rem 0 1rem;">Histórico</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Depressão</th>
+                                    <th>Ativação</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    questionnaires.slice(0, 10).forEach(q => {
+                        content += `
+                            <tr>
+                                <td>${formatDate(q.completed_at)}</td>
+                                <td><strong>${q.dep_total}</strong>/27</td>
+                                <td><strong>${q.act_total}</strong>/27</td>
+                                <td><strong>${q.combined_total}</strong>/54</td>
+                            </tr>
+                        `;
+                    });
+
+                    content += `
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                document.getElementById('patientModalContent').innerHTML = content;
+                openModal('patientModal');
+
+                // Renderizar gráfico se houver dados
+                if (questionnaires.length > 0) {
+                    setTimeout(() => {
+                        const reversed = [...questionnaires].reverse().slice(-10);
+                        const chartData = {
+                            dep: reversed.map(q => q.dep_total),
+                            act: reversed.map(q => q.act_total)
+                        };
+                        createLineChart('patientChart', chartData, []);
+                    }, 100);
+                }
+
+                hideLoading();
+
+            } catch (error) {
+                hideLoading();
+                console.error('Erro ao carregar dados do paciente:', error);
+                showError(error.message || 'Erro ao carregar dados do paciente.');
+            }
+        }
+
+        // Formulário de convite
+        document.getElementById('inviteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('patientEmail').value.trim();
+            const btn = document.getElementById('inviteBtn');
+
+            setButtonLoading(btn, true);
+
+            try {
+                const { data, error } = await supabaseDB.invitePatient(currentUser.id, email);
+
+                if (error) throw new Error(error);
+
+                showSuccess('Paciente adicionado com sucesso!');
+                closeModal('inviteModal');
+                document.getElementById('inviteForm').reset();
+                await loadPatients();
+
+            } catch (error) {
+                console.error('Erro ao convidar paciente:', error);
+                showError(error.message || 'Erro ao convidar paciente.');
+            } finally {
+                setButtonLoading(btn, false);
+            }
+        });
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
