@@ -15,6 +15,7 @@ import {
   getActivationSeverity,
 } from '@/lib/questionnaire-data';
 import { supabase } from '@/lib/supabase';
+import { logQuestionnaireCreation } from '@/lib/audit';
 
 interface Answers {
   [key: string]: number | string | null;
@@ -107,11 +108,17 @@ function QuestionnairePage() {
         drugs: answers.drugs as string,
       };
 
-      const { error: dbError } = await supabase
+      const { data: insertedData, error: dbError } = await supabase
         .from('questionnaires')
-        .insert([questionnaireData]);
+        .insert([questionnaireData])
+        .select();
 
       if (dbError) throw dbError;
+
+      // Log the questionnaire creation for LGPD audit trail
+      if (insertedData && insertedData[0]) {
+        await logQuestionnaireCreation(user!.id, insertedData[0].id);
+      }
 
       setShowResults(true);
     } catch (err: any) {

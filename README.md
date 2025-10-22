@@ -65,7 +65,9 @@ yarn install
 ### Passo 3: Configurar Supabase
 
 1. Crie um projeto no [Supabase](https://supabase.com)
-2. No SQL Editor do Supabase, execute o script `supabase/schema.sql`
+2. No SQL Editor do Supabase, execute os scripts na ordem:
+   - `supabase/schema.sql` (schema principal)
+   - `supabase/lgpd-compliance.sql` (tabelas e funções LGPD)
 3. Copie as credenciais do projeto
 
 ### Passo 4: Configurar Variáveis de Ambiente
@@ -133,12 +135,45 @@ qsm-h-app/
 
 Veja o schema completo em `supabase/schema.sql`
 
-## 🔐 Segurança
+## 🔐 Segurança e LGPD
+
+### Segurança
 
 - Autenticação via Supabase Auth
 - Row Level Security (RLS) para proteção de dados
 - Criptografia de dados em trânsito (HTTPS)
 - Isolamento de dados entre pacientes e médicos
+- Logs de auditoria para todos os acessos
+
+### Conformidade LGPD
+
+Este aplicativo está em total conformidade com a **Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018)**:
+
+✅ **Consentimento Explícito**: Todos os usuários devem consentir explicitamente com o processamento de seus dados pessoais e de saúde
+✅ **Direitos dos Titulares**: Portal completo para exercício dos direitos (acesso, correção, exclusão, portabilidade)
+✅ **Portabilidade de Dados**: Exportação de todos os dados pessoais em formato JSON
+✅ **Direito ao Esquecimento**: Funcionalidade de exclusão completa de dados
+✅ **Transparência**: Logs de auditoria mostrando quem acessou seus dados e quando
+✅ **Segurança**: Criptografia, RLS e controles de acesso rigorosos
+✅ **Retenção de Dados**: Políticas claras de quanto tempo os dados são mantidos
+
+**Documentação Completa**: Veja [LGPD_COMPLIANCE.md](LGPD_COMPLIANCE.md) para detalhes completos sobre conformidade.
+
+### Tabelas LGPD Adicionais
+
+- **consent_records** - Registro de todos os consentimentos
+- **audit_logs** - Logs de acesso a dados pessoais
+- **data_deletion_requests** - Solicitações de exclusão de dados
+- **data_retention_policies** - Políticas de retenção
+- **data_export_logs** - Histórico de exportações
+
+### Portal de Privacidade
+
+Acesse `/privacy` para:
+- Ver histórico de acessos aos seus dados
+- Exportar todos os seus dados
+- Gerenciar consentimentos
+- Solicitar exclusão de conta
 
 ## 📱 PWA - Instalação no Celular
 

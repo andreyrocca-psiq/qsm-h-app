@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Users, LogOut, Mail, Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import MoodLineChart from '@/components/charts/LineChart';
+import { logPatientDataView } from '@/lib/audit';
 
 interface PatientWithData extends Profile {
   questionnaires: Questionnaire[];
@@ -25,6 +26,13 @@ function DoctorDashboard() {
   useEffect(() => {
     loadPatients();
   }, [user]);
+
+  // Log audit when doctor views patient data
+  useEffect(() => {
+    if (selectedPatient && user) {
+      logPatientDataView(user.id, selectedPatient.id);
+    }
+  }, [selectedPatient, user]);
 
   const loadPatients = async () => {
     if (!user) return;

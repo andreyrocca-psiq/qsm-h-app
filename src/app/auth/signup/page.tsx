@@ -4,6 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Stethoscope } from 'lucide-react';
+import { recordSignupConsents } from '@/lib/consent';
+import PrivacyPolicy from '@/components/legal/PrivacyPolicy';
+import TermsOfService from '@/components/legal/TermsOfService';
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
@@ -15,6 +18,13 @@ export default function SignUpPage() {
     confirmPassword: '',
     role: 'patient' as 'patient' | 'doctor',
   });
+  const [consents, setConsents] = useState({
+    termsAccepted: false,
+    privacyAccepted: false,
+    dataProcessingAccepted: false,
+  });
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -33,16 +43,37 @@ export default function SignUpPage() {
       return;
     }
 
+    // LGPD Consent Validation
+    if (!consents.termsAccepted) {
+      setError('Você deve aceitar os Termos de Uso para continuar');
+      return;
+    }
+
+    if (!consents.privacyAccepted) {
+      setError('Você deve aceitar a Política de Privacidade para continuar');
+      return;
+    }
+
+    if (!consents.dataProcessingAccepted) {
+      setError('Você deve consentir com o processamento de dados para continuar');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signUp(
+      const { user } = await signUp(
         formData.email,
         formData.password,
         formData.fullName,
         formData.role,
         formData.phone || undefined
       );
+
+      // Record LGPD consents
+      if (user) {
+        await recordSignupConsents(user.id, consents);
+      }
     } catch (err: any) {
       setError(err.message || 'Erro ao criar conta');
     } finally {
@@ -169,6 +200,83 @@ export default function SignUpPage() {
               />
             </div>
 
+            {/* LGPD Consents */}
+            <div className="space-y-3 pt-4 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-700">
+                Consentimentos Necessários (LGPD)
+              </p>
+
+              <div className="space-y-2">
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={consents.termsAccepted}
+                    onChange={(e) =>
+                      setConsents({ ...consents, termsAccepted: e.target.checked })
+                    }
+                    className="mt-1 mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-600">
+                    Li e aceito os{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowTermsModal(true)}
+                      className="text-primary font-semibold hover:underline"
+                    >
+                      Termos de Uso
+                    </button>{' '}
+                    *
+                  </span>
+                </label>
+
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={consents.privacyAccepted}
+                    onChange={(e) =>
+                      setConsents({ ...consents, privacyAccepted: e.target.checked })
+                    }
+                    className="mt-1 mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-600">
+                    Li e aceito a{' '}
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyModal(true)}
+                      className="text-primary font-semibold hover:underline"
+                    >
+                      Política de Privacidade
+                    </button>{' '}
+                    *
+                  </span>
+                </label>
+
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={consents.dataProcessingAccepted}
+                    onChange={(e) =>
+                      setConsents({
+                        ...consents,
+                        dataProcessingAccepted: e.target.checked,
+                      })
+                    }
+                    className="mt-1 mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-600">
+                    Autorizo o processamento dos meus dados pessoais e de saúde
+                    para os fins descritos na Política de Privacidade *
+                  </span>
+                </label>
+              </div>
+
+              <p className="text-xs text-gray-500 italic">
+                Seus dados serão tratados conforme a LGPD (Lei nº 13.709/2018).
+                Você pode revogar seus consentimentos a qualquer momento através
+                das configurações de privacidade.
+              </p>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
@@ -185,6 +293,80 @@ export default function SignUpPage() {
             </Link>
           </div>
         </div>
+
+        {/* Terms of Service Modal */}
+        {showTermsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-xl font-bold">Termos de Uso</h2>
+                <button
+                  onClick={() => setShowTermsModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1">
+                <TermsOfService />
+              </div>
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowTermsModal(false)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => {
+                    setConsents({ ...consents, termsAccepted: true });
+                    setShowTermsModal(false);
+                  }}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                >
+                  Aceitar Termos
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Privacy Policy Modal */}
+        {showPrivacyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-xl font-bold">Política de Privacidade</h2>
+                <button
+                  onClick={() => setShowPrivacyModal(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1">
+                <PrivacyPolicy />
+              </div>
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowPrivacyModal(false)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => {
+                    setConsents({ ...consents, privacyAccepted: true });
+                    setShowPrivacyModal(false);
+                  }}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                >
+                  Aceitar Política
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
