@@ -9,7 +9,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: 'patient' | 'doctor', phone?: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role: 'patient' | 'doctor', phone?: string) => Promise<{ user: User | null }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -101,6 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         router.push('/doctor/dashboard');
       }
+
+      return { user: data.user };
     } catch (error: any) {
       throw new Error(error.message || 'Erro ao criar conta');
     }
