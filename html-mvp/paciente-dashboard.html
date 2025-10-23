@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Paciente - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">QSM-H</div>
+                <ul class="navbar-menu">
+                    <li><a href="paciente-dashboard.html">Dashboard</a></li>
+                    <li><a href="privacy-portal.html">Privacidade</a></li>
+                    <li><a href="#" onclick="logout(); return false;">Sair</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container">
+            <!-- Header com boas-vindas -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="margin-bottom: 0.5rem;">Bem-vindo(a), <span id="userName">Carregando...</span></h2>
+                        <p style="color: var(--text-gray); margin: 0;">Acompanhe seu monitoramento de humor</p>
+                    </div>
+                    <a href="paciente-questionario.html" class="btn btn-primary">
+                        Responder Novo Questionário
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAssessments">-</div>
+                    <div class="stat-label">Avaliações Realizadas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="lastAssessmentDate">-</div>
+                    <div class="stat-label">Última Avaliação</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="nextDueDate">-</div>
+                    <div class="stat-label">Próxima Avaliação</div>
+                </div>
+            </div>
+
+            <!-- Últimos Scores -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Última Avaliação</h3>
+                </div>
+                <div class="card-body">
+                    <div id="latestScoresContainer">
+                        <p class="text-center" style="color: var(--text-gray); padding: 2rem 0;">
+                            Você ainda não realizou nenhuma avaliação. Clique no botão acima para responder seu primeiro questionário.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Evolução -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Evolução dos Sintomas</h3>
+                </div>
+                <div class="card-body">
+                    <div id="chartContainer">
+                        <canvas id="moodChart" width="800" height="400"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Histórico de Avaliações</h3>
+                </div>
+                <div class="card-body">
+                    <div id="historyContainer">
+                        <p class="text-center" style="color: var(--text-gray); padding: 2rem 0;">
+                            Nenhuma avaliação realizada ainda.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let currentProfile = null;
+        let questionnaires = [];
+
+        // Inicializar dashboard
+        async function initDashboard() {
+            showLoading('Carregando seus dados...');
+
+            // Verificar autenticação
+            const authData = await checkAuth('patient');
+            if (!authData) {
+                hideLoading();
+                return;
+            }
+
+            currentUser = authData.user;
+            currentProfile = authData.profile;
+
+            // Carregar dados
+            await loadDashboardData();
+
+            hideLoading();
+        }
+
+        // Carregar dados do dashboard
+        async function loadDashboardData() {
+            try {
+                // Mostrar nome do usuário
+                document.getElementById('userName').textContent = currentProfile.full_name;
+
+                // Obter questionários
+                const { data, error } = await supabaseDB.getQuestionnaires(currentUser.id);
+
+                if (error) {
+                    throw new Error(error);
+                }
+
+                questionnaires = data || [];
+
+                // Atualizar stats
+                updateStats();
+
+                // Renderizar última avaliação
+                renderLatestScores();
+
+                // Renderizar gráfico
+                renderChart();
+
+                // Renderizar histórico
+                renderHistory();
+
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                showError('Erro ao carregar dados. Tente recarregar a página.');
+            }
+        }
+
+        // Atualizar stats
+        function updateStats() {
+            const totalAssessments = questionnaires.length;
+            document.getElementById('totalAssessments').textContent = totalAssessments;
+
+            if (totalAssessments > 0) {
+                const lastDate = new Date(questionnaires[0].completed_at);
+                document.getElementById('lastAssessmentDate').textContent = formatDateShort(questionnaires[0].completed_at);
+
+                // Calcular próxima avaliação (7 dias depois)
+                const nextDate = new Date(lastDate);
+                nextDate.setDate(nextDate.getDate() + 7);
+
+                const today = new Date();
+                const daysUntil = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+
+                if (daysUntil <= 0) {
+                    document.getElementById('nextDueDate').innerHTML = '<span style="color: var(--danger-red);">Atrasada</span>';
+                } else if (daysUntil <= 2) {
+                    document.getElementById('nextDueDate').innerHTML = `<span style="color: var(--warning-orange);">${daysUntil} dia(s)</span>`;
+                } else {
+                    document.getElementById('nextDueDate').textContent = `${daysUntil} dia(s)`;
+                }
+            } else {
+                document.getElementById('lastAssessmentDate').textContent = 'Nunca';
+                document.getElementById('nextDueDate').textContent = 'Agora';
+            }
+        }
+
+        // Renderizar últimos scores
+        function renderLatestScores() {
+            const container = document.getElementById('latestScoresContainer');
+
+            if (questionnaires.length === 0) {
+                return;
+            }
+
+            const latest = questionnaires[0];
+            const previous = questionnaires.length > 1 ? questionnaires[1] : null;
+
+            const depSeverity = getDepressionSeverity(latest.dep_total);
+            const actSeverity = getActivationSeverity(latest.act_total);
+
+            const depTrend = calculateTrend(latest.dep_total, previous?.dep_total);
+            const actTrend = calculateTrend(latest.act_total, previous?.act_total);
+
+            container.innerHTML = `
+                <div class="score-container">
+                    <div class="score-box depression">
+                        <div class="score-label">Depressão</div>
+                        <div class="score-value">${latest.dep_total}<span style="font-size: 1.5rem;">/27</span></div>
+                        <div class="score-severity">${depSeverity.label}</div>
+                        <div style="margin-top: 1rem; opacity: 0.9;">
+                            ${depTrend.icon} ${depTrend.text}
+                        </div>
+                    </div>
+
+                    <div class="score-box activation">
+                        <div class="score-label">Ativação</div>
+                        <div class="score-value">${latest.act_total}<span style="font-size: 1.5rem;">/27</span></div>
+                        <div class="score-severity">${actSeverity.label}</div>
+                        <div style="margin-top: 1rem; opacity: 0.9;">
+                            ${actTrend.icon} ${actTrend.text}
+                        </div>
+                    </div>
+
+                    <div class="score-box combined">
+                        <div class="score-label">Total Combinado</div>
+                        <div class="score-value">${latest.combined_total}<span style="font-size: 1.5rem;">/54</span></div>
+                        <div style="margin-top: 1rem;">
+                            Avaliado em ${formatDate(latest.completed_at)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renderizar gráfico
+        function renderChart() {
+            if (questionnaires.length === 0) {
+                const canvas = document.getElementById('moodChart');
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#999';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Sem dados para exibir. Responda questionários para ver a evolução.', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            // Preparar dados (ordem reversa para mostrar do mais antigo ao mais recente)
+            const reversed = [...questionnaires].reverse().slice(-10); // Últimos 10
+
+            const chartData = {
+                dep: reversed.map(q => q.dep_total),
+                act: reversed.map(q => q.act_total)
+            };
+
+            const labels = reversed.map(q => formatDateShort(q.completed_at));
+
+            createLineChart('moodChart', chartData, labels);
+        }
+
+        // Renderizar histórico
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+
+            if (questionnaires.length === 0) {
+                return;
+            }
+
+            let html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Depressão</th>
+                            <th>Ativação</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            questionnaires.slice(0, 10).forEach(q => {
+                const depSeverity = getDepressionSeverity(q.dep_total);
+                const actSeverity = getActivationSeverity(q.act_total);
+
+                html += `
+                    <tr>
+                        <td>${formatDate(q.completed_at)}</td>
+                        <td>
+                            <strong>${q.dep_total}</strong>/27
+                            <span style="color: var(--text-gray); font-size: 0.875rem; margin-left: 0.5rem;">(${depSeverity.label})</span>
+                        </td>
+                        <td>
+                            <strong>${q.act_total}</strong>/27
+                            <span style="color: var(--text-gray); font-size: 0.875rem; margin-left: 0.5rem;">(${actSeverity.label})</span>
+                        </td>
+                        <td><strong>${q.combined_total}</strong>/54</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Inicializar quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>

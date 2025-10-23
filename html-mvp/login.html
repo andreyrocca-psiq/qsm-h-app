@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <a href="index.html" style="color: inherit; text-decoration: none;">QSM-H</a>
+                </div>
+                <ul class="navbar-menu">
+                    <li><a href="index.html">Início</a></li>
+                    <li><a href="cadastro.html">Cadastrar</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Formulário de Login -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px); display: flex; align-items: center;">
+        <div class="container-sm">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-center">Entrar</h2>
+                    <p class="text-center" style="color: var(--text-gray); margin-top: 0.5rem;">
+                        Acesse sua conta QSM-H
+                    </p>
+                </div>
+
+                <div class="card-body">
+                    <form id="loginForm">
+                        <!-- Email -->
+                        <div class="form-group">
+                            <label for="email" class="form-label required">Email</label>
+                            <input type="email" id="email" class="form-input" required placeholder="seu@email.com" autofocus>
+                        </div>
+
+                        <!-- Senha -->
+                        <div class="form-group">
+                            <label for="password" class="form-label required">Senha</label>
+                            <input type="password" id="password" class="form-input" required placeholder="Digite sua senha">
+                        </div>
+
+                        <!-- Botão Login -->
+                        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                            Entrar
+                        </button>
+
+                        <!-- Links -->
+                        <div style="margin-top: 1.5rem;">
+                            <p class="text-center" style="color: var(--text-gray);">
+                                Não tem uma conta? <a href="cadastro.html">Cadastre-se</a>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Aviso LGPD -->
+            <div class="alert alert-info mt-3" style="margin-top: 2rem;">
+                <span>
+                    <strong>Privacidade:</strong> Ao fazer login, você concorda com nossa
+                    <a href="privacidade.html" target="_blank">Política de Privacidade</a> e
+                    <a href="termos.html" target="_blank">Termos de Uso</a>.
+                    Seus dados estão protegidos conforme a LGPD.
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Handler do formulário de login
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Obter dados do formulário
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Validações básicas
+            if (!email || !password) {
+                showError('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showError('Por favor, insira um email válido.');
+                return;
+            }
+
+            // Desabilitar botão e mostrar loading
+            const submitBtn = document.getElementById('submitBtn');
+            setButtonLoading(submitBtn, true);
+
+            try {
+                // Fazer login
+                const { user, session, error } = await supabaseAuth.signIn(email, password);
+
+                if (error) {
+                    throw new Error(error);
+                }
+
+                if (!user) {
+                    throw new Error('Email ou senha incorretos.');
+                }
+
+                // Obter perfil do usuário
+                const profile = await supabaseDB.getProfile(user.id);
+
+                if (!profile) {
+                    throw new Error('Perfil não encontrado. Entre em contato com o suporte.');
+                }
+
+                showSuccess('Login realizado com sucesso! Redirecionando...');
+
+                // Redirecionar para o dashboard apropriado
+                setTimeout(() => {
+                    if (profile.role === 'patient') {
+                        window.location.href = 'paciente-dashboard.html';
+                    } else if (profile.role === 'doctor') {
+                        window.location.href = 'medico-dashboard.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 1000);
+
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showError(error.message || 'Email ou senha incorretos. Tente novamente.');
+                setButtonLoading(submitBtn, false);
+            }
+        });
+
+        // Verificar se já está logado
+        (async () => {
+            const session = await supabaseAuth.getSession();
+            if (session) {
+                const user = await supabaseAuth.getCurrentUser();
+                if (user) {
+                    const profile = await supabaseDB.getProfile(user.id);
+                    if (profile) {
+                        window.location.href = profile.role === 'patient' ? 'paciente-dashboard.html' : 'medico-dashboard.html';
+                    }
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

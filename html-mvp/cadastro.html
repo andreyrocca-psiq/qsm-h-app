@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <a href="index.html" style="color: inherit; text-decoration: none;">QSM-H</a>
+                </div>
+                <ul class="navbar-menu">
+                    <li><a href="index.html">Início</a></li>
+                    <li><a href="login.html">Entrar</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Formulário de Cadastro -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container-sm">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title text-center">Criar Conta</h2>
+                    <p class="text-center" style="color: var(--text-gray); margin-top: 0.5rem;">
+                        Preencha os dados abaixo para começar
+                    </p>
+                </div>
+
+                <div class="card-body">
+                    <form id="signupForm">
+                        <!-- Tipo de Usuário -->
+                        <div class="form-group">
+                            <label class="form-label required">Eu sou:</label>
+                            <div class="radio-group">
+                                <div class="radio-option" style="flex: 1;">
+                                    <input type="radio" name="role" id="rolePatient" value="patient" required checked>
+                                    <label for="rolePatient">
+                                        <div style="font-size: 2rem;">👤</div>
+                                        <div>Paciente</div>
+                                    </label>
+                                </div>
+                                <div class="radio-option" style="flex: 1;">
+                                    <input type="radio" name="role" id="roleDoctor" value="doctor" required>
+                                    <label for="roleDoctor">
+                                        <div style="font-size: 2rem;">👨‍⚕️</div>
+                                        <div>Médico</div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Nome Completo -->
+                        <div class="form-group">
+                            <label for="fullName" class="form-label required">Nome Completo</label>
+                            <input type="text" id="fullName" class="form-input" required placeholder="Digite seu nome completo">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="form-group">
+                            <label for="email" class="form-label required">Email</label>
+                            <input type="email" id="email" class="form-input" required placeholder="seu@email.com">
+                        </div>
+
+                        <!-- Telefone -->
+                        <div class="form-group">
+                            <label for="phone" class="form-label">Telefone (opcional)</label>
+                            <input type="tel" id="phone" class="form-input" placeholder="(00) 00000-0000">
+                            <div class="form-help">Usado apenas para comunicações importantes</div>
+                        </div>
+
+                        <!-- Senha -->
+                        <div class="form-group">
+                            <label for="password" class="form-label required">Senha</label>
+                            <input type="password" id="password" class="form-input" required placeholder="Mínimo 6 caracteres">
+                        </div>
+
+                        <!-- Confirmar Senha -->
+                        <div class="form-group">
+                            <label for="confirmPassword" class="form-label required">Confirmar Senha</label>
+                            <input type="password" id="confirmPassword" class="form-input" required placeholder="Digite a senha novamente">
+                        </div>
+
+                        <!-- Consentimentos LGPD -->
+                        <div style="background-color: var(--primary-light); padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                            <h4 style="margin-bottom: 1rem; color: var(--primary-dark);">Consentimentos Necessários (LGPD)</h4>
+
+                            <div class="form-checkbox">
+                                <input type="checkbox" id="consentTerms" required>
+                                <label for="consentTerms">
+                                    Li e aceito os <a href="termos.html" target="_blank">Termos de Uso</a>
+                                </label>
+                            </div>
+
+                            <div class="form-checkbox">
+                                <input type="checkbox" id="consentPrivacy" required>
+                                <label for="consentPrivacy">
+                                    Li e aceito a <a href="privacidade.html" target="_blank">Política de Privacidade</a>
+                                </label>
+                            </div>
+
+                            <div class="form-checkbox">
+                                <input type="checkbox" id="consentData" required>
+                                <label for="consentData">
+                                    Autorizo o processamento dos meus dados pessoais e de saúde para os fins
+                                    descritos na Política de Privacidade, incluindo compartilhamento com
+                                    profissionais de saúde autorizados por mim
+                                </label>
+                            </div>
+
+                            <p style="font-size: 0.875rem; color: var(--text-gray); margin-top: 1rem; margin-bottom: 0;">
+                                <strong>Seus direitos:</strong> Você pode acessar, corrigir, exportar ou excluir seus dados a qualquer momento através do Portal de Privacidade.
+                            </p>
+                        </div>
+
+                        <!-- Botão Cadastrar -->
+                        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+                            Criar Conta
+                        </button>
+
+                        <!-- Link para Login -->
+                        <p class="text-center mt-3" style="color: var(--text-gray);">
+                            Já tem uma conta? <a href="login.html">Faça login</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Aplicar máscara de telefone
+        applyPhoneMask('phone');
+
+        // Validar senhas ao digitar
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+
+            if (confirmPassword && password !== confirmPassword) {
+                this.style.borderColor = 'var(--danger-red)';
+            } else {
+                this.style.borderColor = 'var(--border-gray)';
+            }
+        });
+
+        // Handler do formulário de cadastro
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Validar campos
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const role = document.querySelector('input[name="role"]:checked').value;
+
+            // Validar consentimentos
+            const consentTerms = document.getElementById('consentTerms').checked;
+            const consentPrivacy = document.getElementById('consentPrivacy').checked;
+            const consentData = document.getElementById('consentData').checked;
+
+            // Validações
+            if (!fullName || !email || !password) {
+                showError('Por favor, preencha todos os campos obrigatórios.');
+                return;
+            }
+
+            if (!isValidEmail(email)) {
+                showError('Por favor, insira um email válido.');
+                return;
+            }
+
+            if (!isValidPassword(password)) {
+                showError('A senha deve ter no mínimo 6 caracteres.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('As senhas não coincidem.');
+                return;
+            }
+
+            if (!consentTerms || !consentPrivacy || !consentData) {
+                showError('Você deve aceitar todos os consentimentos para continuar.');
+                return;
+            }
+
+            // Desabilitar botão e mostrar loading
+            const submitBtn = document.getElementById('submitBtn');
+            setButtonLoading(submitBtn, true);
+
+            try {
+                // Registrar usuário
+                const { user, session, error } = await supabaseAuth.signUp(email, password, {
+                    fullName,
+                    role,
+                    phone: phone || null,
+                    termsVersion: '1.0',
+                    privacyVersion: '1.0'
+                });
+
+                if (error) {
+                    throw new Error(error);
+                }
+
+                if (user) {
+                    showSuccess('Conta criada com sucesso! Redirecionando...');
+
+                    // Redirecionar para o dashboard apropriado
+                    setTimeout(() => {
+                        if (role === 'patient') {
+                            window.location.href = 'paciente-dashboard.html';
+                        } else {
+                            window.location.href = 'medico-dashboard.html';
+                        }
+                    }, 1500);
+                } else {
+                    throw new Error('Erro ao criar conta. Tente novamente.');
+                }
+
+            } catch (error) {
+                console.error('Erro no cadastro:', error);
+                showError(error.message || 'Erro ao criar conta. Tente novamente.');
+                setButtonLoading(submitBtn, false);
+            }
+        });
+
+        // Verificar se já está logado
+        (async () => {
+            const session = await supabaseAuth.getSession();
+            if (session) {
+                const user = await supabaseAuth.getCurrentUser();
+                if (user) {
+                    const profile = await supabaseDB.getProfile(user.id);
+                    if (profile) {
+                        window.location.href = profile.role === 'patient' ? 'paciente-dashboard.html' : 'medico-dashboard.html';
+                    }
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questionário - QSM-H</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <div class="navbar-brand">QSM-H</div>
+                <ul class="navbar-menu">
+                    <li><a href="paciente-dashboard.html">Dashboard</a></li>
+                    <li><a href="#" onclick="logout(); return false;">Sair</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Questionário -->
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container-sm" style="max-width: 800px;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Questionário Semanal de Monitoramento de Humor</h2>
+                    <p style="color: var(--text-gray); margin-top: 0.5rem;">
+                        Responda com base em como você se sentiu <strong>na última semana</strong>
+                    </p>
+                    <div class="progress-bar mt-3">
+                        <div class="progress-fill" id="progressBar" style="width: 0%;"></div>
+                    </div>
+                    <p class="text-center mt-2" style="color: var(--text-gray); font-size: 0.875rem;">
+                        <span id="progressText">0%</span> completo
+                    </p>
+                </div>
+
+                <div class="card-body">
+                    <form id="questionnaireForm">
+                        <!-- Parte A: Sintomas Depressivos -->
+                        <div class="questionnaire-section" id="sectionA">
+                            <h3 style="color: var(--danger-red); margin-bottom: 1.5rem;">
+                                Parte A: Sintomas Depressivos (PHQ-9)
+                            </h3>
+                            <p style="margin-bottom: 2rem; color: var(--text-gray);">
+                                <strong>Na última semana, com que frequência você:</strong>
+                            </p>
+
+                            <div id="depressiveQuestions"></div>
+                        </div>
+
+                        <!-- Parte B: Sintomas de Ativação -->
+                        <div class="questionnaire-section hidden" id="sectionB">
+                            <h3 style="color: var(--warning-orange); margin-bottom: 1.5rem;">
+                                Parte B: Sintomas de Ativação (PMQ-9)
+                            </h3>
+                            <p style="margin-bottom: 2rem; color: var(--text-gray);">
+                                <strong>Na última semana, com que frequência você:</strong>
+                            </p>
+
+                            <div id="activationQuestions"></div>
+                        </div>
+
+                        <!-- Parte C: Hábitos -->
+                        <div class="questionnaire-section hidden" id="sectionC">
+                            <h3 style="color: var(--primary-blue); margin-bottom: 1.5rem;">
+                                Parte C: Hábitos e Estilo de Vida
+                            </h3>
+
+                            <div id="habitQuestions"></div>
+                        </div>
+
+                        <!-- Navegação -->
+                        <div style="display: flex; justify-content: space-between; margin-top: 3rem; gap: 1rem;">
+                            <button type="button" class="btn btn-outline" id="prevBtn" onclick="previousSection()" style="display: none;">
+                                ← Anterior
+                            </button>
+                            <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextSection()">
+                                Próximo →
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn" style="display: none;">
+                                Enviar Questionário
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modal de Resultados -->
+    <div class="modal" id="resultsModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Resultado da Avaliação</h3>
+                <button class="modal-close" onclick="closeModal('resultsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="resultsContent">
+                <!-- Conteúdo será preenchido dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="window.location.href='paciente-dashboard.html'">
+                    Ir para Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 QSM-H. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Dados do questionário
+        const depressiveQuestions = [
+            { id: 'dep1', text: 'Teve pouco interesse ou prazer em fazer as coisas' },
+            { id: 'dep2', text: 'Se sentiu para baixo, deprimido(a) ou sem esperança' },
+            { id: 'dep3', text: 'Teve dificuldade para pegar no sono, continuar dormindo ou dormiu demais' },
+            { id: 'dep4', text: 'Se sentiu cansado(a) ou com pouca energia' },
+            { id: 'dep5', text: 'Teve falta de apetite ou comeu demais' },
+            { id: 'dep6', text: 'Se sentiu mal consigo mesmo(a) - ou achou que é um fracasso ou que decepcionou sua família ou você mesmo(a)' },
+            { id: 'dep7', text: 'Teve dificuldade para se concentrar nas coisas, como ler jornal ou ver televisão' },
+            { id: 'dep8', text: 'Se movimentou ou falou tão devagar que outras pessoas poderiam ter notado; ou o oposto - ficou tão agitado(a) ou inquieto(a) que você ficou andando de um lado para o outro muito mais do que de costume' },
+            { id: 'dep9', text: 'Pensou em se ferir de alguma maneira ou que seria melhor estar morto(a)' }
+        ];
+
+        const activationQuestions = [
+            { id: 'act1', text: 'Teve menos sono que o habitual ou nenhum sono, e ainda se sentiu energizado(a)' },
+            { id: 'act2', text: 'Se sentiu facilmente irritado(a)' },
+            { id: 'act3', text: 'Se sentiu hiperativo(a) ou mais ativo que o habitual' },
+            { id: 'act4', text: 'Agiu impulsivamente ou fez coisas sem pensar nas consequências' },
+            { id: 'act5', text: 'Se sentiu acelerado(a) ou inquieto(a)' },
+            { id: 'act6', text: 'Se sentiu distraído(a) com facilidade' },
+            { id: 'act7', text: 'Sentiu pressão para continuar falando ou falou mais que o habitual' },
+            { id: 'act8', text: 'Se sentiu argumentativo(a)' },
+            { id: 'act9', text: 'Teve pensamentos acelerados' }
+        ];
+
+        const habitQuestions = [
+            {
+                id: 'sleep_hours',
+                category: 'Sono',
+                text: 'Em média, quantas horas você dormiu por noite na última semana?',
+                options: ['Menos de 4 horas', 'Entre 4 e 6 horas', 'Entre 6 e 8 horas', 'Entre 8 e 10 horas', 'Mais de 10 horas']
+            },
+            {
+                id: 'sleep_quality',
+                text: 'Como você classificaria a qualidade do seu sono na última semana?',
+                options: ['Muito ruim', 'Ruim', 'Regular', 'Boa', 'Muito boa']
+            },
+            {
+                id: 'sleep_routine',
+                text: 'Na última semana, você foi dormir e acordou em horários muito diferentes a cada dia?',
+                options: ['Sim, meus horários variaram muito', 'Um pouco, tive alguma variação', 'Não, mantive uma rotina regular']
+            },
+            {
+                id: 'medication',
+                category: 'Uso de Medicamentos',
+                text: 'Na última semana, você deixou de tomar alguma dose da sua medicação prescrita?',
+                options: ['Não, tomei todas as doses corretamente', 'Sim, esqueci 1 ou 2 doses', 'Sim, esqueci 3 ou mais doses', 'Não tomei a medicação na maioria dos dias']
+            },
+            {
+                id: 'exercise',
+                category: 'Atividade Física',
+                text: 'Em quantos dias você praticou pelo menos 30 minutos de atividade física na última semana?',
+                options: ['Nenhum dia', '1 a 2 dias', '3 a 4 dias', '5 dias ou mais']
+            },
+            {
+                id: 'alcohol',
+                category: 'Uso de Substâncias',
+                text: 'Na última semana, você consumiu bebidas alcoólicas?',
+                options: ['Não', 'Sim, 1 a 2 vezes', 'Sim, 3 ou mais vezes']
+            },
+            {
+                id: 'drugs',
+                text: 'Na última semana, você fez uso de alguma outra substância (drogas não prescritas)?',
+                options: ['Não', 'Sim, uma ou mais vezes']
+            }
+        ];
+
+        const ratingOptions = [
+            { value: 0, label: '0', sublabel: 'Nenhuma vez' },
+            { value: 1, label: '1', sublabel: 'Vários dias' },
+            { value: 2, label: '2', sublabel: 'Mais da metade' },
+            { value: 3, label: '3', sublabel: 'Quase todos' }
+        ];
+
+        let currentSection = 0;
+        let answers = {};
+        let currentUser = null;
+
+        // Inicializar
+        async function init() {
+            const authData = await checkAuth('patient');
+            if (!authData) return;
+
+            currentUser = authData.user;
+            renderQuestions();
+        }
+
+        // Renderizar perguntas
+        function renderQuestions() {
+            // Depressivas
+            const depContainer = document.getElementById('depressiveQuestions');
+            depContainer.innerHTML = depressiveQuestions.map((q, index) => `
+                <div class="form-group">
+                    <label class="form-label required">${index + 1}. ${q.text}</label>
+                    <div class="radio-group">
+                        ${ratingOptions.map(opt => `
+                            <div class="radio-option">
+                                <input type="radio" name="${q.id}" id="${q.id}_${opt.value}" value="${opt.value}" required>
+                                <label for="${q.id}_${opt.value}">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${opt.label}</div>
+                                    <div style="font-size: 0.75rem;">${opt.sublabel}</div>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Ativação
+            const actContainer = document.getElementById('activationQuestions');
+            actContainer.innerHTML = activationQuestions.map((q, index) => `
+                <div class="form-group">
+                    <label class="form-label required">${index + 1}. ${q.text}</label>
+                    <div class="radio-group">
+                        ${ratingOptions.map(opt => `
+                            <div class="radio-option">
+                                <input type="radio" name="${q.id}" id="${q.id}_${opt.value}" value="${opt.value}" required>
+                                <label for="${q.id}_${opt.value}">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${opt.label}</div>
+                                    <div style="font-size: 0.75rem;">${opt.sublabel}</div>
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            // Hábitos
+            const habitContainer = document.getElementById('habitQuestions');
+            let lastCategory = '';
+            habitContainer.innerHTML = habitQuestions.map(q => {
+                let categoryHeader = '';
+                if (q.category && q.category !== lastCategory) {
+                    lastCategory = q.category;
+                    categoryHeader = `<h4 style="color: var(--primary-blue); margin: 2rem 0 1rem; padding-top: 1.5rem; border-top: 2px solid var(--border-gray);">${q.category}</h4>`;
+                }
+
+                return `
+                    ${categoryHeader}
+                    <div class="form-group">
+                        <label class="form-label required">${q.text}</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${q.options.map((opt, i) => `
+                                <div class="form-checkbox" style="border: 2px solid var(--border-gray); padding: 0.75rem; border-radius: 8px; transition: var(--transition);" onmouseover="this.style.borderColor='var(--primary-blue)'" onmouseout="if(!this.querySelector('input').checked) this.style.borderColor='var(--border-gray)'">
+                                    <input type="radio" name="${q.id}" id="${q.id}_${i}" value="${opt}" required onchange="this.closest('.form-checkbox').style.borderColor='var(--primary-blue)'; this.closest('.form-checkbox').style.backgroundColor='var(--primary-light)';">
+                                    <label for="${q.id}_${i}" style="margin: 0;">${opt}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Adicionar listeners para atualizar progresso
+            document.querySelectorAll('input[type="radio"]').forEach(input => {
+                input.addEventListener('change', updateProgress);
+            });
+        }
+
+        // Atualizar progresso
+        function updateProgress() {
+            const totalQuestions = depressiveQuestions.length + activationQuestions.length + habitQuestions.length;
+            let answeredCount = 0;
+
+            [...depressiveQuestions, ...activationQuestions].forEach(q => {
+                if (document.querySelector(`input[name="${q.id}"]:checked`)) {
+                    answeredCount++;
+                }
+            });
+
+            habitQuestions.forEach(q => {
+                if (document.querySelector(`input[name="${q.id}"]:checked`)) {
+                    answeredCount++;
+                }
+            });
+
+            const progress = Math.round((answeredCount / totalQuestions) * 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+        }
+
+        // Próxima seção
+        function nextSection() {
+            const sections = ['sectionA', 'sectionB', 'sectionC'];
+            const currentSectionElement = document.getElementById(sections[currentSection]);
+
+            // Validar seção atual
+            const inputs = currentSectionElement.querySelectorAll('input[required]');
+            const groups = new Set();
+            inputs.forEach(input => groups.add(input.name));
+
+            let allAnswered = true;
+            groups.forEach(name => {
+                if (!currentSectionElement.querySelector(`input[name="${name}"]:checked`)) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                showError('Por favor, responda todas as perguntas desta seção.');
+                return;
+            }
+
+            // Esconder seção atual
+            currentSectionElement.classList.add('hidden');
+
+            // Próxima seção
+            currentSection++;
+
+            if (currentSection < sections.length) {
+                document.getElementById(sections[currentSection]).classList.remove('hidden');
+                document.getElementById('prevBtn').style.display = 'block';
+
+                if (currentSection === sections.length - 1) {
+                    document.getElementById('nextBtn').style.display = 'none';
+                    document.getElementById('submitBtn').style.display = 'block';
+                }
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Seção anterior
+        function previousSection() {
+            const sections = ['sectionA', 'sectionB', 'sectionC'];
+
+            document.getElementById(sections[currentSection]).classList.add('hidden');
+            currentSection--;
+            document.getElementById(sections[currentSection]).classList.remove('hidden');
+
+            if (currentSection === 0) {
+                document.getElementById('prevBtn').style.display = 'none';
+            }
+
+            document.getElementById('nextBtn').style.display = 'block';
+            document.getElementById('submitBtn').style.display = 'none';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Submit
+        document.getElementById('questionnaireForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            showLoading('Salvando suas respostas...');
+
+            try {
+                // Coletar respostas
+                const formData = new FormData(e.target);
+                const answers = {};
+
+                // Calcular scores
+                let depTotal = 0;
+                let actTotal = 0;
+
+                depressiveQuestions.forEach(q => {
+                    const value = parseInt(formData.get(q.id));
+                    answers[q.id] = value;
+                    depTotal += value;
+                });
+
+                activationQuestions.forEach(q => {
+                    const value = parseInt(formData.get(q.id));
+                    answers[q.id] = value;
+                    actTotal += value;
+                });
+
+                habitQuestions.forEach(q => {
+                    answers[q.id] = formData.get(q.id);
+                });
+
+                answers.dep_total = depTotal;
+                answers.act_total = actTotal;
+                answers.combined_total = depTotal + actTotal;
+
+                // Salvar no Supabase
+                const { data, error } = await supabaseDB.saveQuestionnaire(currentUser.id, answers);
+
+                hideLoading();
+
+                if (error) {
+                    throw new Error(error);
+                }
+
+                // Mostrar resultados
+                showResults(answers);
+
+            } catch (error) {
+                hideLoading();
+                console.error('Erro ao salvar questionário:', error);
+                showError('Erro ao salvar questionário. Tente novamente.');
+            }
+        });
+
+        // Mostrar resultados
+        function showResults(answers) {
+            const depSeverity = getDepressionSeverity(answers.dep_total);
+            const actSeverity = getActivationSeverity(answers.act_total);
+
+            const content = `
+                <div class="score-container">
+                    <div class="score-box depression">
+                        <div class="score-label">Sintomas Depressivos</div>
+                        <div class="score-value">${answers.dep_total}<span style="font-size: 1.5rem;">/27</span></div>
+                        <div class="score-severity">${depSeverity.label}</div>
+                    </div>
+
+                    <div class="score-box activation">
+                        <div class="score-label">Sintomas de Ativação</div>
+                        <div class="score-value">${answers.act_total}<span style="font-size: 1.5rem;">/27</span></div>
+                        <div class="score-severity">${actSeverity.label}</div>
+                    </div>
+
+                    <div class="score-box combined">
+                        <div class="score-label">Score Total</div>
+                        <div class="score-value">${answers.combined_total}<span style="font-size: 1.5rem;">/54</span></div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <span>
+                        <strong>Importante:</strong> Este questionário é uma ferramenta de monitoramento.
+                        Os resultados devem ser discutidos com seu profissional de saúde.
+                    </span>
+                </div>
+
+                <p class="text-center mt-3" style="color: var(--text-gray);">
+                    Suas respostas foram salvas com sucesso e estão disponíveis para visualização no seu dashboard.
+                </p>
+            `;
+
+            document.getElementById('resultsContent').innerHTML = content;
+            openModal('resultsModal');
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
