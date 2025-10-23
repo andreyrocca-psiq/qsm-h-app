@@ -26,10 +26,9 @@ Não é possível acessar localhost
 
 ```sql
 -- CONFIRMAR TODOS OS EMAILS (FORÇAR)
+-- CORRIGIDO: Não atualiza confirmed_at (é coluna gerada pelo Supabase)
 UPDATE auth.users
-SET
-  email_confirmed_at = NOW(),
-  confirmed_at = NOW()
+SET email_confirmed_at = NOW()
 WHERE email_confirmed_at IS NULL;
 
 -- Verificar
