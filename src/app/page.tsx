@@ -16,13 +16,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/auth/signup"
-              className="btn-primary bg-white text-primary hover:bg-gray-100 text-lg px-8 py-4"
+              className="px-8 py-4 bg-white text-primary rounded-lg font-semibold shadow-md hover:shadow-lg hover:bg-gray-100 transition-all duration-300 text-lg text-center"
             >
               Criar Conta
             </Link>
             <Link
               href="/auth/login"
-              className="btn-primary bg-transparent border-2 border-white hover:bg-white/10 text-lg px-8 py-4"
+              className="px-8 py-4 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white/10 transition-all duration-300 text-lg text-center"
             >
               Entrar
             </Link>
@@ -151,7 +151,7 @@ export default function Home() {
           </p>
           <Link
             href="/auth/signup"
-            className="btn-primary bg-white text-primary hover:bg-gray-100 text-lg px-8 py-4 inline-block"
+            className="px-8 py-4 bg-white text-primary rounded-lg font-semibold shadow-md hover:shadow-lg hover:bg-gray-100 transition-all duration-300 text-lg inline-block"
           >
             Criar Conta Gratuita
           </Link>
