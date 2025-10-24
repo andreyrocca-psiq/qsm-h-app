@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { supabase, Profile, Questionnaire } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
+import { Profile, Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Users, LogOut, Mail, Plus, Bell, X } from 'lucide-react';

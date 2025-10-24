@@ -1,18 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// POST: Criar convite/compartilhamento (médico->paciente ou paciente->médico)
+// POST: Médico convida paciente
 export async function POST(request: NextRequest) {
+  console.log('=== POST /api/invites START ===');
+  console.log('Cookies received:', request.cookies.getAll().map(c => `${c.name}=${c.value.substring(0, 20)}...`));
+
   try {
     const supabase = await createClient();
     const body = await request.json();
     const { patientEmail, doctorEmail } = body;
 
+    console.log('Request body:', { patientEmail, doctorEmail });
+
     // Verificar autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    console.log('Auth result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      authErrorMessage: authError?.message,
+      authErrorStatus: authError?.status,
+    });
+
     if (authError || !user) {
+      console.error('AUTH FAILED - Error details:', JSON.stringify(authError, null, 2));
       return NextResponse.json(
-        { error: 'Não autenticado' },
+        {
+          error: 'Não autenticado',
+          debug: {
+            authError: authError?.message,
+            cookies: request.cookies.getAll().map(c => c.name)
+          }
+        },
         { status: 401 }
       );
     }
