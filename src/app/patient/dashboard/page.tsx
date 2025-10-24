@@ -184,7 +184,7 @@ function PatientDashboard() {
       const response = await fetch('/api/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doctorEmail }),
+        body: JSON.stringify({ patientEmail: doctorEmail }),
       });
 
       const data = await response.json();
