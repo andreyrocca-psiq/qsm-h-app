@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+
+// Force dynamic rendering - required for cookies/auth
+export const dynamic = 'force-dynamic';
 /**
  * API Route to export user data (Right to Data Portability - LGPD Art. 18, V)
  */

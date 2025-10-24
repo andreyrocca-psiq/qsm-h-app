@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+
+// Force dynamic rendering - required for cookies/auth
+export const dynamic = 'force-dynamic';
 // DELETE: Remover conexão (paciente se desvincula de médico ou médico remove paciente)
 export async function DELETE(
   request: NextRequest,
