@@ -69,7 +69,7 @@ function DoctorDashboard() {
         return;
       }
 
-      const patientIds = relationships.map((r) => r.patient_id);
+      const patientIds = relationships.map((r: { patient_id: string }) => r.patient_id);
 
       // Get patient profiles
       const { data: profilesData, error: profilesError } = await supabase
@@ -81,7 +81,7 @@ function DoctorDashboard() {
 
       // Get questionnaires for each patient
       const patientsWithData: PatientWithData[] = await Promise.all(
-        (profilesData || []).map(async (patient) => {
+        (profilesData || []).map(async (patient: Profile) => {
           const { data: questionnairesData } = await supabase
             .from('questionnaires')
             .select('*')
