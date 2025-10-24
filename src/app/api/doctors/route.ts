@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // GET: Buscar médicos por email (para paciente procurar)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get('email');
 

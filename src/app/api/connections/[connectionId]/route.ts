@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 // DELETE: Remover conexão (paciente se desvincula de médico ou médico remove paciente)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { connectionId: string } }
+  { params }: { params: Promise<{ connectionId: string }> }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    const { connectionId } = await params;
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -21,7 +22,7 @@ export async function DELETE(
     const { data: connection } = await supabase
       .from('doctor_patient')
       .select('*')
-      .eq('id', params.connectionId)
+      .eq('id', connectionId)
       .single();
 
     if (!connection) {
@@ -43,7 +44,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('doctor_patient')
       .delete()
-      .eq('id', params.connectionId);
+      .eq('id', connectionId);
 
     if (deleteError) {
       console.error('Error removing connection:', deleteError);
