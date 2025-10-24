@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 // POST: Criar convite/compartilhamento (médico->paciente ou paciente->médico)
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const body = await request.json();
     const { patientEmail, doctorEmail } = body;
 
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
 // GET: Listar convites (médico vê enviados, paciente vê recebidos)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

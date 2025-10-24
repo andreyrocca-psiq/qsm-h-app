@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 // PATCH: Aceitar ou recusar convite
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { inviteId: string } }
+  { params }: { params: Promise<{ inviteId: string }> }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    const { inviteId } = await params;
     const { action } = await request.json(); // 'accept' ou 'reject'
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -22,7 +23,7 @@ export async function PATCH(
     const { data: invite } = await supabase
       .from('doctor_patient')
       .select('*')
-      .eq('id', params.inviteId)
+      .eq('id', inviteId)
       .single();
 
     if (!invite) {
@@ -53,7 +54,7 @@ export async function PATCH(
       const { error: updateError } = await supabase
         .from('doctor_patient')
         .update({ accepted_at: new Date().toISOString() })
-        .eq('id', params.inviteId);
+        .eq('id', inviteId);
 
       if (updateError) {
         console.error('Error accepting invite:', updateError);
@@ -72,7 +73,7 @@ export async function PATCH(
       const { error: deleteError } = await supabase
         .from('doctor_patient')
         .delete()
-        .eq('id', params.inviteId);
+        .eq('id', inviteId);
 
       if (deleteError) {
         console.error('Error rejecting invite:', deleteError);
@@ -104,10 +105,11 @@ export async function PATCH(
 // DELETE: Cancelar convite (médico)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { inviteId: string } }
+  { params }: { params: Promise<{ inviteId: string }> }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
+    const { inviteId } = await params;
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -121,7 +123,7 @@ export async function DELETE(
     const { data: invite } = await supabase
       .from('doctor_patient')
       .select('*')
-      .eq('id', params.inviteId)
+      .eq('id', inviteId)
       .single();
 
     if (!invite) {
@@ -143,7 +145,7 @@ export async function DELETE(
     const { error: deleteError } = await supabase
       .from('doctor_patient')
       .delete()
-      .eq('id', params.inviteId);
+      .eq('id', inviteId);
 
     if (deleteError) {
       console.error('Error canceling invite:', deleteError);
