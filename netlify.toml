@@ -7,12 +7,12 @@
 
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
-  NEXT_PUBLIC_APP_URL = "https://qsm-h-app.netlify.app"
+  NEXT_PUBLIC_APP_URL = "https://questionariodehumor.netlify.app"
 
-# Redirect all requests to Next.js
+# Redirect all requests to Next.js (handled by Next.js plugin)
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/next"
   status = 200
 
 # Headers for security
