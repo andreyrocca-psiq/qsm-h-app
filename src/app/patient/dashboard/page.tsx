@@ -8,7 +8,34 @@ import MoodLineChart from '@/components/charts/LineChart';
 import { supabase, Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingDown, TrendingUp, Calendar, LogOut, FileText } from 'lucide-react';
+import { TrendingDown, TrendingUp, Calendar, LogOut, FileText, Bell, Users, X, Search } from 'lucide-react';
+
+interface Invite {
+  id: string;
+  invited_at: string;
+  doctor: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
+}
+
+interface Connection {
+  id: string;
+  connectedAt: string;
+  doctor: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
+}
+
+interface Doctor {
+  id: string;
+  name: string;
+  email: string;
+  status: 'none' | 'pending' | 'connected';
+}
 
 function PatientDashboard() {
   const { user, profile, signOut } = useAuth();
@@ -16,8 +43,24 @@ function PatientDashboard() {
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Sharing system states
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [showInvitesModal, setShowInvitesModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+
+  // Share with doctor states
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchResults, setSearchResults] = useState<Doctor[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [shareError, setShareError] = useState('');
+  const [shareSuccess, setShareSuccess] = useState('');
+
   useEffect(() => {
     loadQuestionnaires();
+    loadInvites();
+    loadConnections();
   }, [user]);
 
   const loadQuestionnaires = async () => {
@@ -37,6 +80,150 @@ function PatientDashboard() {
       console.error('Error loading questionnaires:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInvites = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/invites');
+      const data = await response.json();
+      setInvites(data.invites || []);
+    } catch (error) {
+      console.error('Error loading invites:', error);
+    }
+  };
+
+  const loadConnections = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/connections');
+      const data = await response.json();
+      setConnections(data.connections || []);
+    } catch (error) {
+      console.error('Error loading connections:', error);
+    }
+  };
+
+  const handleAcceptInvite = async (inviteId: string) => {
+    try {
+      const response = await fetch(`/api/invites/${inviteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'accept' }),
+      });
+
+      if (response.ok) {
+        await loadInvites();
+        await loadConnections();
+      } else {
+        const data = await response.json();
+        console.error('Error accepting invite:', data.error);
+      }
+    } catch (error) {
+      console.error('Error accepting invite:', error);
+    }
+  };
+
+  const handleRejectInvite = async (inviteId: string) => {
+    try {
+      const response = await fetch(`/api/invites/${inviteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject' }),
+      });
+
+      if (response.ok) {
+        await loadInvites();
+      } else {
+        const data = await response.json();
+        console.error('Error rejecting invite:', data.error);
+      }
+    } catch (error) {
+      console.error('Error rejecting invite:', error);
+    }
+  };
+
+  const handleSearchDoctor = async () => {
+    if (!searchEmail || !searchEmail.includes('@')) {
+      setShareError('Por favor, insira um email válido');
+      return;
+    }
+
+    setSearching(true);
+    setShareError('');
+    setSearchResults([]);
+
+    try {
+      const response = await fetch(`/api/doctors?email=${encodeURIComponent(searchEmail)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao buscar médicos');
+      }
+
+      setSearchResults(data.doctors || []);
+      if (data.doctors.length === 0) {
+        setShareError('Nenhum médico encontrado com este email');
+      }
+    } catch (error: any) {
+      setShareError(error.message);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleShareWithDoctor = async (doctorEmail: string) => {
+    setShareError('');
+    setShareSuccess('');
+
+    try {
+      const response = await fetch('/api/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientEmail: doctorEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao compartilhar com médico');
+      }
+
+      setShareSuccess('Compartilhamento enviado com sucesso!');
+      setSearchResults([]);
+      setSearchEmail('');
+
+      setTimeout(() => {
+        setShowShareModal(false);
+        setShareSuccess('');
+        loadConnections();
+      }, 2000);
+    } catch (error: any) {
+      setShareError(error.message);
+    }
+  };
+
+  const handleRemoveConnection = async (connectionId: string) => {
+    if (!confirm('Tem certeza que deseja desvincular este médico?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/connections/${connectionId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await loadConnections();
+      } else {
+        const data = await response.json();
+        console.error('Error removing connection:', data.error);
+      }
+    } catch (error) {
+      console.error('Error removing connection:', error);
     }
   };
 
@@ -80,13 +267,42 @@ function PatientDashboard() {
               <h1 className="text-2xl font-bold text-primary">Dashboard - Paciente</h1>
               <p className="text-gray-600 text-sm">Olá, {profile?.full_name}</p>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Sair
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Notification Bell for Invites */}
+              <button
+                onClick={() => setShowInvitesModal(true)}
+                className="relative p-2 text-gray-600 hover:text-primary transition-colors rounded-lg hover:bg-gray-100"
+              >
+                <Bell className="w-6 h-6" />
+                {invites.length > 0 && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {invites.length > 9 ? '9+' : invites.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Connections Button */}
+              <button
+                onClick={() => setShowConnectionsModal(true)}
+                className="relative p-2 text-gray-600 hover:text-primary transition-colors rounded-lg hover:bg-gray-100"
+                title="Meus Médicos"
+              >
+                <Users className="w-6 h-6" />
+                {connections.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {connections.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                Sair
+              </button>
+            </div>
           </div>
         </header>
 
@@ -115,13 +331,20 @@ function PatientDashboard() {
           ) : (
             <>
               {/* Quick Actions */}
-              <div className="mb-8">
+              <div className="mb-8 flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={() => router.push('/patient/questionnaire')}
-                  className="btn-primary flex items-center gap-2 mx-auto"
+                  className="btn-primary flex items-center gap-2"
                 >
                   <Calendar className="w-5 h-5" />
                   Responder Novo Questionário
+                </button>
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <Users className="w-5 h-5" />
+                  Compartilhar com Médico
                 </button>
               </div>
 
@@ -234,6 +457,212 @@ function PatientDashboard() {
             </>
           )}
         </div>
+
+        {/* Invites Modal */}
+        {showInvitesModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-primary">
+                  Convites Pendentes ({invites.length})
+                </h3>
+                <button
+                  onClick={() => setShowInvitesModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {invites.length === 0 ? (
+                <p className="text-gray-600 text-center py-8">
+                  Nenhum convite pendente
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {invites.map((invite) => (
+                    <div key={invite.id} className="border p-4 rounded-lg">
+                      <div className="font-semibold text-gray-900">{invite.doctor.full_name}</div>
+                      <div className="text-sm text-gray-600">{invite.doctor.email}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Enviado em {format(new Date(invite.invited_at), "dd/MM/yyyy 'às' HH:mm")}
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleAcceptInvite(invite.id)}
+                          className="btn-primary flex-1 text-sm py-2"
+                        >
+                          Aceitar
+                        </button>
+                        <button
+                          onClick={() => handleRejectInvite(invite.id)}
+                          className="btn-secondary flex-1 text-sm py-2"
+                        >
+                          Recusar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Share with Doctor Modal */}
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-primary">
+                  Compartilhar com Médico
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false);
+                    setSearchEmail('');
+                    setSearchResults([]);
+                    setShareError('');
+                    setShareSuccess('');
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email do Médico
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={searchEmail}
+                      onChange={(e) => setSearchEmail(e.target.value)}
+                      placeholder="medico@exemplo.com"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      disabled={searching}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearchDoctor();
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={handleSearchDoctor}
+                      disabled={searching}
+                      className="btn-primary px-4 py-2 flex items-center gap-2"
+                    >
+                      <Search className="w-5 h-5" />
+                      {searching ? 'Buscando...' : 'Buscar'}
+                    </button>
+                  </div>
+                </div>
+
+                {shareError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    {shareError}
+                  </div>
+                )}
+
+                {shareSuccess && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    {shareSuccess}
+                  </div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700">Resultados:</h4>
+                    {searchResults.map((doctor) => (
+                      <div key={doctor.id} className="border p-4 rounded-lg">
+                        <div className="font-semibold text-gray-900">{doctor.name}</div>
+                        <div className="text-sm text-gray-600">{doctor.email}</div>
+                        <div className="mt-3">
+                          {doctor.status === 'connected' ? (
+                            <div className="text-sm text-green-600 font-medium">
+                              Já conectado
+                            </div>
+                          ) : doctor.status === 'pending' ? (
+                            <div className="text-sm text-yellow-600 font-medium">
+                              Convite pendente
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleShareWithDoctor(doctor.email)}
+                              className="btn-primary w-full text-sm py-2"
+                            >
+                              Compartilhar meus dados
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Connections Modal */}
+        {showConnectionsModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-primary">
+                  Meus Médicos ({connections.length})
+                </h3>
+                <button
+                  onClick={() => setShowConnectionsModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {connections.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 mb-4">
+                    Você ainda não tem médicos conectados
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowConnectionsModal(false);
+                      setShowShareModal(true);
+                    }}
+                    className="btn-primary"
+                  >
+                    Compartilhar com Médico
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {connections.map((connection) => (
+                    <div key={connection.id} className="border p-4 rounded-lg">
+                      <div className="font-semibold text-gray-900">
+                        {connection.doctor.full_name}
+                      </div>
+                      <div className="text-sm text-gray-600">{connection.doctor.email}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Conectado em{' '}
+                        {format(new Date(connection.connectedAt), "dd/MM/yyyy 'às' HH:mm")}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveConnection(connection.id)}
+                        className="mt-3 w-full btn-secondary text-sm py-2 text-red-600 hover:bg-red-50"
+                      >
+                        Desvincular
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );

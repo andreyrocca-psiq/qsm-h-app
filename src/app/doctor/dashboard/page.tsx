@@ -6,13 +6,23 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { supabase, Profile, Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Users, LogOut, Mail, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Users, LogOut, Mail, Plus, Bell, X } from 'lucide-react';
 import MoodLineChart from '@/components/charts/LineChart';
 import { logPatientDataView } from '@/lib/audit';
 
 interface PatientWithData extends Profile {
   questionnaires: Questionnaire[];
   latestQuestionnaire?: Questionnaire;
+}
+
+interface Invite {
+  id: string;
+  invitedAt: string;
+  patient: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
 }
 
 function DoctorDashboard() {
@@ -22,9 +32,15 @@ function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [showPendingInvites, setShowPendingInvites] = useState(false);
 
   useEffect(() => {
     loadPatients();
+    loadPendingInvites();
   }, [user]);
 
   // Log audit when doctor views patient data
@@ -88,12 +104,67 @@ function DoctorDashboard() {
     }
   };
 
+  const loadPendingInvites = async () => {
+    try {
+      const response = await fetch('/api/invites');
+      const data = await response.json();
+      setPendingInvites(data.invites || []);
+    } catch (error) {
+      console.error('Error loading pending invites:', error);
+    }
+  };
+
   const handleInvitePatient = async () => {
-    // This would require email integration
-    // For now, it's a placeholder
-    alert('Funcionalidade de convite será implementada em breve!');
-    setShowInviteModal(false);
-    setInviteEmail('');
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      setInviteError('Por favor, insira um email válido');
+      return;
+    }
+
+    setInviting(true);
+    setInviteError('');
+    setInviteSuccess('');
+
+    try {
+      const response = await fetch('/api/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientEmail: inviteEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao enviar convite');
+      }
+
+      setInviteSuccess(data.message);
+      setInviteEmail('');
+      loadPendingInvites();
+
+      // Fechar modal após 2 segundos
+      setTimeout(() => {
+        setShowInviteModal(false);
+        setInviteSuccess('');
+      }, 2000);
+    } catch (error: any) {
+      setInviteError(error.message);
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    try {
+      const response = await fetch(`/api/invites/${inviteId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        loadPendingInvites();
+      }
+    } catch (error) {
+      console.error('Error canceling invite:', error);
+    }
   };
 
   const selectedChartData = selectedPatient
@@ -117,13 +188,27 @@ function DoctorDashboard() {
               <h1 className="text-2xl font-bold text-primary">Dashboard - Médico</h1>
               <p className="text-gray-600 text-sm">Olá, Dr(a). {profile?.full_name}</p>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Sair
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Notification Bell */}
+              {pendingInvites.length > 0 && (
+                <button
+                  onClick={() => setShowPendingInvites(true)}
+                  className="relative p-2 text-gray-600 hover:text-primary transition-colors"
+                >
+                  <Bell className="w-6 h-6" />
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {pendingInvites.length}
+                  </span>
+                </button>
+              )}
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 text-gray-600 hover:text-primary transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                Sair
+              </button>
+            </div>
           </div>
         </header>
 
@@ -336,28 +421,95 @@ function DoctorDashboard() {
               <p className="text-gray-600 mb-4">
                 Digite o e-mail do paciente que você deseja convidar para compartilhar dados.
               </p>
+
+              {inviteError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+                  {inviteError}
+                </div>
+              )}
+
+              {inviteSuccess && (
+                <div className="bg-green-50 text-green-600 p-3 rounded-lg mb-4 text-sm">
+                  ✅ {inviteSuccess}
+                </div>
+              )}
+
               <input
                 type="email"
                 value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
+                onChange={(e) => {
+                  setInviteEmail(e.target.value);
+                  setInviteError('');
+                }}
                 placeholder="email@paciente.com"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={inviting}
               />
               <div className="flex gap-3">
-                <button onClick={handleInvitePatient} className="btn-primary flex-1">
+                <button
+                  onClick={handleInvitePatient}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                  disabled={inviting}
+                >
                   <Mail className="w-4 h-4 inline mr-2" />
-                  Enviar Convite
+                  {inviting ? 'Enviando...' : 'Enviar Convite'}
                 </button>
                 <button
                   onClick={() => {
                     setShowInviteModal(false);
                     setInviteEmail('');
+                    setInviteError('');
+                    setInviteSuccess('');
                   }}
                   className="btn-secondary flex-1"
+                  disabled={inviting}
                 >
                   Cancelar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Invites Modal */}
+        {showPendingInvites && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-primary">
+                  Convites Pendentes ({pendingInvites.length})
+                </h3>
+                <button
+                  onClick={() => setShowPendingInvites(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {pendingInvites.length === 0 ? (
+                <p className="text-gray-600 text-center py-8">
+                  Nenhum convite pendente
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.id} className="border p-4 rounded-lg">
+                      <div className="font-semibold">{invite.patient.full_name}</div>
+                      <div className="text-sm text-gray-600">{invite.patient.email}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Convidado em {format(new Date(invite.invitedAt), 'dd/MM/yyyy')}
+                      </div>
+                      <button
+                        onClick={() => handleCancelInvite(invite.id)}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Cancelar Convite
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
