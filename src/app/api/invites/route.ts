@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// Force dynamic rendering - required for cookies/auth
+export const dynamic = 'force-dynamic';
+
 // POST: Médico convida paciente
 export async function POST(request: NextRequest) {
   console.log('=== POST /api/invites START ===');
