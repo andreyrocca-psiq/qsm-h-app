@@ -14,7 +14,7 @@ import {
   getDepressiveSeverity,
   getActivationSeverity,
 } from '@/lib/questionnaire-data';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { logQuestionnaireCreation } from '@/lib/audit';
 
 interface Answers {
