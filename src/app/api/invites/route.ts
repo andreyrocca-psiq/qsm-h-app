@@ -68,17 +68,42 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      console.log('🔍 Buscando paciente com email:', patientEmail);
+
       // Buscar paciente pelo email
-      const { data: patients } = await supabase
+      const { data: patients, error: searchError } = await supabase
         .from('profiles')
         .select('id, email, full_name, role')
         .eq('role', 'patient')
         .ilike('email', patientEmail)
         .limit(1);
 
+      console.log('📊 Resultado da busca de paciente:', {
+        found: patients?.length || 0,
+        patients: patients,
+        error: searchError
+      });
+
       if (!patients || patients.length === 0) {
+        // Tentar buscar SEM filtro de role para debug
+        const { data: anyUser } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role')
+          .ilike('email', patientEmail)
+          .limit(1);
+
+        console.log('🔍 Busca sem filtro de role:', anyUser);
+
         return NextResponse.json(
-          { error: 'Paciente não encontrado ou email inválido' },
+          {
+            error: 'Paciente não encontrado ou email inválido',
+            debug: {
+              searchedEmail: patientEmail,
+              foundAnyUser: !!anyUser,
+              userRole: anyUser?.[0]?.role || 'nenhum',
+              hint: anyUser?.[0] ? 'Usuário encontrado mas com role diferente de "patient"' : 'Nenhum usuário encontrado com este email'
+            }
+          },
           { status: 404 }
         );
       }
@@ -95,17 +120,42 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      console.log('🔍 Buscando médico com email:', doctorEmail);
+
       // Buscar médico pelo email
-      const { data: doctors } = await supabase
+      const { data: doctors, error: searchError } = await supabase
         .from('profiles')
         .select('id, email, full_name, role')
         .eq('role', 'doctor')
         .ilike('email', doctorEmail)
         .limit(1);
 
+      console.log('📊 Resultado da busca de médico:', {
+        found: doctors?.length || 0,
+        doctors: doctors,
+        error: searchError
+      });
+
       if (!doctors || doctors.length === 0) {
+        // Tentar buscar SEM filtro de role para debug
+        const { data: anyUser } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role')
+          .ilike('email', doctorEmail)
+          .limit(1);
+
+        console.log('🔍 Busca sem filtro de role:', anyUser);
+
         return NextResponse.json(
-          { error: 'Médico não encontrado ou email inválido' },
+          {
+            error: 'Médico não encontrado ou email inválido',
+            debug: {
+              searchedEmail: doctorEmail,
+              foundAnyUser: !!anyUser,
+              userRole: anyUser?.[0]?.role || 'nenhum',
+              hint: anyUser?.[0] ? 'Usuário encontrado mas com role diferente de "doctor"' : 'Nenhum usuário encontrado com este email'
+            }
+          },
           { status: 404 }
         );
       }
