@@ -2,7 +2,7 @@
 
 ## 🎯 Problema Identificado
 
-O erro "médico ou paciente não encontrado" ocorre quando:
+O erro "profissional de saúde ou paciente não encontrado" ocorre quando:
 1. Usuários foram cadastrados mas seus perfis não foram criados na tabela `profiles`
 2. Perfis existem mas o campo `role` não foi preenchido corretamente
 3. O trigger de criação automática de perfis não estava funcionando ou não foi executado
@@ -46,7 +46,7 @@ Após executar o script, você verá várias mensagens no console:
 Total de usuários: X
 Total de perfis: X
 Perfis com role: X
-   - Médicos: X
+   - Profissionais de Saúde: X
    - Pacientes: X
 
 ✅ SUCESSO: Sistema de convites corrigido!
@@ -59,10 +59,10 @@ Você também verá **duas tabelas**:
 
 ### Passo 3: Testar o Sistema de Convites
 
-#### A. Teste como Médico
+#### A. Teste como Profissional de Saúde
 
-1. Faça login como médico
-2. Vá para o Dashboard do Médico
+1. Faça login como profissional de saúde
+2. Vá para o Dashboard do Profissional
 3. Clique em "Convidar Paciente"
 4. Digite o email de um paciente cadastrado
 5. Envie o convite
@@ -79,9 +79,9 @@ Você também verá **duas tabelas**:
 
 1. Faça login como paciente
 2. Vá para o Dashboard do Paciente
-3. Clique em "Compartilhar com Médico"
-4. Busque um médico pelo email
-5. Se o médico não aparecer:
+3. Clique em "Compartilhar com Profissional de Saúde"
+4. Busque um profissional pelo email
+5. Se o profissional não aparecer:
    - **Abra o console do navegador (F12 > Console)**
    - Procure pelos logs com emojis
    - Copie a mensagem de erro completa
@@ -116,9 +116,9 @@ SET role = 'patient'
 WHERE role IS NULL;
 ```
 
-### ❌ "Médico/Paciente não encontrado" mas usuário existe
+### ❌ "Profissional de Saúde/Paciente não encontrado" mas usuário existe
 
-**Causa:** O usuário tem role diferente do esperado (ex: médico tentando convidar outro médico)
+**Causa:** O usuário tem role diferente do esperado (ex: profissional tentando convidar outro profissional)
 
 **Solução:** Verifique a role do usuário:
 
