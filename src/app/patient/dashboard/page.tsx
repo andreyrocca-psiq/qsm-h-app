@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingDown, TrendingUp, Calendar, LogOut, FileText, Bell, Users, X, Search } from 'lucide-react';
+import { TrendingDown, TrendingUp, Calendar, LogOut, FileText, Bell, Users, X, Search, BarChart3 } from 'lucide-react';
 
 interface Invite {
   id: string;
@@ -339,6 +339,13 @@ function PatientDashboard() {
                 >
                   <Calendar className="w-5 h-5" />
                   Responder Novo Questionário
+                </button>
+                <button
+                  onClick={() => router.push('/patient/insights')}
+                  className="btn-secondary flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  Ver Análises e Padrões
                 </button>
                 <button
                   onClick={() => setShowShareModal(true)}
