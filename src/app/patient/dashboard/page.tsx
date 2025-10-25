@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingDown, TrendingUp, Calendar, LogOut, FileText, Bell, Users, X, Search } from 'lucide-react';
+import { TrendingDown, TrendingUp, Calendar, LogOut, FileText, Bell, Users, X, Search, BarChart3 } from 'lucide-react';
 
 interface Invite {
   id: string;
@@ -162,12 +162,12 @@ function PatientDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao buscar médicos');
+        throw new Error(data.error || 'Erro ao buscar profissionais');
       }
 
       setSearchResults(data.doctors || []);
       if (data.doctors.length === 0) {
-        setShareError('Nenhum médico encontrado com este email');
+        setShareError('Nenhum profissional de saúde encontrado com este email');
       }
     } catch (error: any) {
       setShareError(error.message);
@@ -190,7 +190,7 @@ function PatientDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao compartilhar com médico');
+        throw new Error(data.error || 'Erro ao compartilhar com profissional de saúde');
       }
 
       setShareSuccess('Compartilhamento enviado com sucesso!');
@@ -208,7 +208,7 @@ function PatientDashboard() {
   };
 
   const handleRemoveConnection = async (connectionId: string) => {
-    if (!confirm('Tem certeza que deseja desvincular este médico?')) {
+    if (!confirm('Tem certeza que deseja desvincular este profissional de saúde?')) {
       return;
     }
 
@@ -286,7 +286,7 @@ function PatientDashboard() {
               <button
                 onClick={() => setShowConnectionsModal(true)}
                 className="relative p-2 text-gray-600 hover:text-primary transition-colors rounded-lg hover:bg-gray-100"
-                title="Meus Médicos"
+                title="Meus Profissionais de Saúde"
               >
                 <Users className="w-6 h-6" />
                 {connections.length > 0 && (
@@ -341,11 +341,18 @@ function PatientDashboard() {
                   Responder Novo Questionário
                 </button>
                 <button
+                  onClick={() => router.push('/patient/insights')}
+                  className="btn-secondary flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  Ver Análises e Padrões
+                </button>
+                <button
                   onClick={() => setShowShareModal(true)}
                   className="btn-secondary flex items-center gap-2"
                 >
                   <Users className="w-5 h-5" />
-                  Compartilhar com Médico
+                  Compartilhar com Profissional de Saúde
                 </button>
               </div>
 
@@ -516,7 +523,7 @@ function PatientDashboard() {
             <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-primary">
-                  Compartilhar com Médico
+                  Compartilhar com Profissional de Saúde
                 </h3>
                 <button
                   onClick={() => {
@@ -535,7 +542,7 @@ function PatientDashboard() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email do Médico
+                    Email do Profissional de Saúde
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -614,7 +621,7 @@ function PatientDashboard() {
             <div className="card max-w-md w-full max-h-[80vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-primary">
-                  Meus Médicos ({connections.length})
+                  Meus Profissionais de Saúde ({connections.length})
                 </h3>
                 <button
                   onClick={() => setShowConnectionsModal(false)}
@@ -627,7 +634,7 @@ function PatientDashboard() {
               {connections.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-600 mb-4">
-                    Você ainda não tem médicos conectados
+                    Você ainda não tem profissionais de saúde conectados
                   </p>
                   <button
                     onClick={() => {
@@ -636,7 +643,7 @@ function PatientDashboard() {
                     }}
                     className="btn-primary"
                   >
-                    Compartilhar com Médico
+                    Compartilhar com Profissional de Saúde
                   </button>
                 </div>
               ) : (

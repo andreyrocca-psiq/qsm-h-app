@@ -115,7 +115,7 @@ export default function SignUpPage() {
               }`}
             >
               <Stethoscope className={`w-8 h-8 mx-auto mb-2 ${formData.role === 'doctor' ? 'text-primary' : 'text-gray-400'}`} />
-              <div className="text-sm font-semibold">Médico</div>
+              <div className="text-sm font-semibold">Profissional de Saúde</div>
             </button>
           </div>
 
