@@ -36,7 +36,7 @@ function DoctorInsightsPage() {
     if (!user) return;
 
     try {
-      // Verificar se o médico tem acesso ao paciente
+      // Verificar se o profissional tem acesso ao paciente
       const { data: connection, error: accessError } = await supabase
         .from('doctor_patient')
         .select('*')
@@ -140,7 +140,7 @@ function DoctorInsightsPage() {
                 Você não tem acesso aos dados deste paciente
               </h3>
               <p className="text-gray-600 mb-6">
-                Apenas médicos conectados a este paciente podem visualizar seus dados.
+                Apenas profissionais de saúde conectados a este paciente podem visualizar seus dados.
               </p>
               <button
                 onClick={() => router.push('/doctor/dashboard')}

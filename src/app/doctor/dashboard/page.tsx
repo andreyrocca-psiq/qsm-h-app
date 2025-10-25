@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Profile, Questionnaire } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Users, LogOut, Mail, Plus, Bell, X, BarChart3 } from 'lucide-react';
+import { Users, LogOut, Mail, Plus, Bell, X, BarChart3, Copy, MessageCircle, Link as LinkIcon } from 'lucide-react';
 import MoodLineChart from '@/components/charts/LineChart';
 import { logPatientDataView } from '@/lib/audit';
 
@@ -38,6 +38,7 @@ function DoctorDashboard() {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [showPendingInvites, setShowPendingInvites] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
 
   useEffect(() => {
     loadPatients();
@@ -168,6 +169,45 @@ function DoctorDashboard() {
     }
   };
 
+  const generateInviteMessage = () => {
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const signupUrl = `${appUrl}/auth/signup`;
+    const professionalName = profile?.full_name || 'Profissional de Saúde';
+
+    return `Olá! 👋
+
+Sou ${professionalName} e gostaria de convidá-lo(a) a usar o QSM-H (Questionário Semanal de Monitoramento de Humor).
+
+Com este app, você poderá:
+✅ Monitorar seus sintomas semanalmente
+✅ Visualizar a evolução do seu humor
+✅ Compartilhar seus dados comigo de forma segura
+
+Para começar:
+1. Acesse: ${signupUrl}
+2. Crie sua conta como PACIENTE
+3. Responda seu primeiro questionário
+
+Após o cadastro, você poderá me adicionar como seu profissional de saúde e compartilhar seus dados comigo.
+
+Qualquer dúvida, estou à disposição!
+
+${professionalName}`;
+  };
+
+  const handleCopyMessage = () => {
+    const message = generateInviteMessage();
+    navigator.clipboard.writeText(message);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 3000);
+  };
+
+  const handleSendWhatsApp = () => {
+    const message = generateInviteMessage();
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   const selectedChartData = selectedPatient
     ? selectedPatient.questionnaires
         .slice()
@@ -186,8 +226,8 @@ function DoctorDashboard() {
         <header className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-primary">Dashboard - Médico</h1>
-              <p className="text-gray-600 text-sm">Olá, Dr(a). {profile?.full_name}</p>
+              <h1 className="text-2xl font-bold text-primary">Dashboard - Profissional de Saúde</h1>
+              <p className="text-gray-600 text-sm">Olá, {profile?.full_name}</p>
             </div>
             <div className="flex items-center gap-4">
               {/* Notification Bell */}
@@ -426,56 +466,109 @@ function DoctorDashboard() {
         {/* Invite Modal */}
         {showInviteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="card max-w-md w-full">
-              <h3 className="text-xl font-semibold text-primary mb-4">Convidar Paciente</h3>
-              <p className="text-gray-600 mb-4">
-                Digite o e-mail do paciente que você deseja convidar para compartilhar dados.
-              </p>
-
-              {inviteError && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
-                  {inviteError}
-                </div>
-              )}
-
-              {inviteSuccess && (
-                <div className="bg-green-50 text-green-600 p-3 rounded-lg mb-4 text-sm">
-                  ✅ {inviteSuccess}
-                </div>
-              )}
-
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => {
-                  setInviteEmail(e.target.value);
-                  setInviteError('');
-                }}
-                placeholder="email@paciente.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-primary focus:border-transparent"
-                disabled={inviting}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={handleInvitePatient}
-                  className="btn-primary flex-1 disabled:opacity-50"
-                  disabled={inviting}
-                >
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  {inviting ? 'Enviando...' : 'Enviar Convite'}
-                </button>
+            <div className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-primary">Convidar Paciente</h3>
                 <button
                   onClick={() => {
                     setShowInviteModal(false);
                     setInviteEmail('');
                     setInviteError('');
                     setInviteSuccess('');
+                    setCopiedMessage(false);
                   }}
-                  className="btn-secondary flex-1"
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Opção 1: Compartilhar Mensagem */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                  Opção 1: Compartilhar Mensagem de Convite
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  Envie esta mensagem para o paciente via WhatsApp, SMS, email ou qualquer outro meio.
+                </p>
+
+                {/* Preview da mensagem */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-3 max-h-48 overflow-y-auto">
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                    {generateInviteMessage()}
+                  </pre>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyMessage}
+                    className="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Copy className="w-5 h-5" />
+                    {copiedMessage ? 'Copiado!' : 'Copiar Mensagem'}
+                  </button>
+                  <button
+                    onClick={handleSendWhatsApp}
+                    className="flex-1 bg-green-500 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Enviar via WhatsApp
+                  </button>
+                </div>
+              </div>
+
+              {/* Divisor */}
+              <div className="border-t border-gray-200 my-6"></div>
+
+              {/* Opção 2: Enviar Convite Direto */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-primary" />
+                  Opção 2: Enviar Convite Direto (para quem já tem cadastro)
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  Se o paciente já tem cadastro no app, envie um convite direto pelo email.
+                </p>
+
+                {inviteError && (
+                  <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+                    {inviteError}
+                  </div>
+                )}
+
+                {inviteSuccess && (
+                  <div className="bg-green-50 text-green-600 p-3 rounded-lg mb-4 text-sm">
+                    ✅ {inviteSuccess}
+                  </div>
+                )}
+
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => {
+                    setInviteEmail(e.target.value);
+                    setInviteError('');
+                  }}
+                  placeholder="email@paciente.com"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-primary focus:border-transparent"
+                  disabled={inviting}
+                />
+                <button
+                  onClick={handleInvitePatient}
+                  className="w-full btn-primary disabled:opacity-50"
                   disabled={inviting}
                 >
-                  Cancelar
+                  <Mail className="w-4 h-4 inline mr-2" />
+                  {inviting ? 'Enviando...' : 'Enviar Convite'}
                 </button>
+              </div>
+
+              {/* Info */}
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Dica:</strong> A mensagem compartilhada (Opção 1) é mais eficaz para novos usuários que ainda não têm cadastro. O convite direto (Opção 2) só funciona para pacientes que já estão cadastrados no app.
+                </p>
               </div>
             </div>
           </div>

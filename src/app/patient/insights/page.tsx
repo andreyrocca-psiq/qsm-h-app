@@ -128,7 +128,7 @@ function InsightsPage() {
                     </h2>
                     <p className="text-white/90 text-sm">
                       Use estas análises para identificar o que afeta seu humor e compartilhe
-                      com seu médico. Padrões claros podem ajudar a ajustar seu tratamento.
+                      com seu profissional de saúde. Padrões claros podem ajudar a ajustar seu tratamento.
                     </p>
                     <div className="mt-3 flex items-center gap-4 text-sm">
                       <span className="bg-white/20 px-3 py-1 rounded-full">
@@ -215,7 +215,7 @@ function InsightsPage() {
                   💡 Dica Importante
                 </h4>
                 <p className="text-sm text-blue-800">
-                  Estas análises são ferramentas para auxiliar você e seu médico. Não use
+                  Estas análises são ferramentas para auxiliar você e seu profissional de saúde. Não use
                   estas informações para alterar sua medicação ou tratamento sem orientação
                   médica. Continue respondendo os questionários semanalmente para análises
                   mais precisas.
