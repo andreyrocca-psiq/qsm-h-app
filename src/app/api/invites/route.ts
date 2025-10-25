@@ -70,12 +70,12 @@ export async function POST(request: NextRequest) {
 
       console.log('🔍 Buscando paciente com email:', patientEmail);
 
-      // Buscar paciente pelo email
+      // Buscar paciente usando a view user_profiles (que une auth.users + profiles)
       const { data: patients, error: searchError } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('id, email, full_name, role')
         .eq('role', 'patient')
-        .ilike('email', patientEmail)
+        .ilike('email', patientEmail.trim())
         .limit(1);
 
       console.log('📊 Resultado da busca de paciente:', {
@@ -85,23 +85,25 @@ export async function POST(request: NextRequest) {
       });
 
       if (!patients || patients.length === 0) {
-        // Tentar buscar SEM filtro de role para debug
+        // Buscar qualquer usuário com esse email para debug
         const { data: anyUser } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .select('id, email, full_name, role')
-          .ilike('email', patientEmail)
+          .ilike('email', patientEmail.trim())
           .limit(1);
 
         console.log('🔍 Busca sem filtro de role:', anyUser);
 
         return NextResponse.json(
           {
-            error: 'Paciente não encontrado ou email inválido',
+            error: 'Paciente não encontrado com este email',
             debug: {
               searchedEmail: patientEmail,
               foundAnyUser: !!anyUser,
               userRole: anyUser?.[0]?.role || 'nenhum',
-              hint: anyUser?.[0] ? 'Usuário encontrado mas com role diferente de "patient"' : 'Nenhum usuário encontrado com este email'
+              hint: anyUser?.[0]
+                ? `Usuário encontrado mas cadastrado como ${anyUser[0].role === 'doctor' ? 'PROFISSIONAL DE SAÚDE' : anyUser[0].role}`
+                : 'Nenhum usuário encontrado com este email. Verifique se já fez o cadastro.'
             }
           },
           { status: 404 }
@@ -120,40 +122,42 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log('🔍 Buscando médico com email:', doctorEmail);
+      console.log('🔍 Buscando profissional de saúde com email:', doctorEmail);
 
-      // Buscar médico pelo email
+      // Buscar profissional usando a view user_profiles (que une auth.users + profiles)
       const { data: doctors, error: searchError } = await supabase
-        .from('profiles')
+        .from('user_profiles')
         .select('id, email, full_name, role')
         .eq('role', 'doctor')
-        .ilike('email', doctorEmail)
+        .ilike('email', doctorEmail.trim())
         .limit(1);
 
-      console.log('📊 Resultado da busca de médico:', {
+      console.log('📊 Resultado da busca de profissional:', {
         found: doctors?.length || 0,
         doctors: doctors,
         error: searchError
       });
 
       if (!doctors || doctors.length === 0) {
-        // Tentar buscar SEM filtro de role para debug
+        // Buscar qualquer usuário com esse email para debug
         const { data: anyUser } = await supabase
-          .from('profiles')
+          .from('user_profiles')
           .select('id, email, full_name, role')
-          .ilike('email', doctorEmail)
+          .ilike('email', doctorEmail.trim())
           .limit(1);
 
         console.log('🔍 Busca sem filtro de role:', anyUser);
 
         return NextResponse.json(
           {
-            error: 'Médico não encontrado ou email inválido',
+            error: 'Profissional de saúde não encontrado com este email',
             debug: {
               searchedEmail: doctorEmail,
               foundAnyUser: !!anyUser,
               userRole: anyUser?.[0]?.role || 'nenhum',
-              hint: anyUser?.[0] ? 'Usuário encontrado mas com role diferente de "doctor"' : 'Nenhum usuário encontrado com este email'
+              hint: anyUser?.[0]
+                ? `Usuário encontrado mas cadastrado como ${anyUser[0].role === 'patient' ? 'PACIENTE' : anyUser[0].role}`
+                : 'Nenhum usuário encontrado com este email. Verifique se já fez o cadastro.'
             }
           },
           { status: 404 }
