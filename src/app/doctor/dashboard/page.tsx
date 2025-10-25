@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { supabase } from '@/lib/supabase/client';
@@ -27,6 +28,7 @@ interface Invite {
 }
 
 function DoctorDashboard() {
+  const router = useRouter();
   const { user, profile, signOut } = useAuth();
   const [patients, setPatients] = useState<PatientWithData[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<PatientWithData | null>(null);
