@@ -55,7 +55,7 @@ SELECT
   u.created_at as usuario_criado,
   u.raw_user_meta_data->>'role' as metadata_role,
   p.full_name,
-  p.role as perfil_role,
+  p.role::text as perfil_role,
   p.created_at as perfil_criado,
   CASE
     WHEN p.id IS NULL THEN '❌ SEM PERFIL'
@@ -167,7 +167,7 @@ BEGIN
   RAISE NOTICE 'Total de usuários: %', v_total_users;
   RAISE NOTICE 'Total de perfis: %', v_total_profiles;
   RAISE NOTICE 'Perfis com role: %', v_profiles_with_role;
-  RAISE NOTICE '   - Médicos: %', v_doctors;
+  RAISE NOTICE '   - Profissionais de Saúde: %', v_doctors;
   RAISE NOTICE '   - Pacientes: %', v_patients;
   RAISE NOTICE '';
 
@@ -203,11 +203,11 @@ END $$;
 SELECT
   u.email,
   p.full_name,
-  p.role,
+  p.role::text as role,
   CASE
     WHEN p.id IS NULL THEN '❌ SEM PERFIL'
     WHEN p.role IS NULL THEN '⚠️  SEM ROLE'
-    WHEN p.role = 'doctor' THEN '👨‍⚕️ MÉDICO'
+    WHEN p.role = 'doctor' THEN '👨‍⚕️ PROFISSIONAL DE SAÚDE'
     WHEN p.role = 'patient' THEN '👤 PACIENTE'
     ELSE '✅ OK'
   END as status
@@ -219,7 +219,7 @@ ORDER BY p.role, u.created_at DESC;
 -- VERIFICAÇÕES ADICIONAIS
 -- ============================================
 
--- Verificar se há emails duplicados
+-- Verificar se há usuários com emails duplicados em auth.users
 DO $$
 DECLARE
   v_duplicates INTEGER;
@@ -230,15 +230,38 @@ BEGIN
   SELECT COUNT(*) INTO v_duplicates
   FROM (
     SELECT email, COUNT(*) as count
-    FROM profiles
+    FROM auth.users
     GROUP BY email
     HAVING COUNT(*) > 1
   ) sub;
 
   IF v_duplicates > 0 THEN
-    RAISE WARNING '⚠️  PROBLEMA: % emails duplicados encontrados', v_duplicates;
+    RAISE WARNING '⚠️  PROBLEMA: % emails duplicados encontrados em auth.users', v_duplicates;
   ELSE
     RAISE NOTICE '✅ Não há emails duplicados';
+  END IF;
+  RAISE NOTICE '';
+END $$;
+
+-- Verificar se o trigger existe e está ativo
+DO $$
+DECLARE
+  v_trigger_exists INTEGER;
+BEGIN
+  RAISE NOTICE '';
+  RAISE NOTICE '🔍 VERIFICAÇÃO DO TRIGGER:';
+
+  SELECT COUNT(*) INTO v_trigger_exists
+  FROM information_schema.triggers
+  WHERE trigger_name = 'on_auth_user_created'
+    AND event_object_schema = 'auth'
+    AND event_object_table = 'users';
+
+  IF v_trigger_exists > 0 THEN
+    RAISE NOTICE '✅ Trigger on_auth_user_created está ativo';
+  ELSE
+    RAISE WARNING '⚠️  PROBLEMA: Trigger on_auth_user_created NÃO encontrado!';
+    RAISE WARNING '   Execute o script fix-complete.sql para criar o trigger';
   END IF;
   RAISE NOTICE '';
 END $$;
@@ -252,5 +275,13 @@ BEGIN
   RAISE NOTICE '========================================';
   RAISE NOTICE '✅ DIAGNÓSTICO E CORREÇÃO CONCLUÍDOS';
   RAISE NOTICE '========================================';
+  RAISE NOTICE '';
+  RAISE NOTICE '📌 RESUMO:';
+  RAISE NOTICE '1. Perfis faltantes foram criados';
+  RAISE NOTICE '2. Roles NULL foram corrigidos';
+  RAISE NOTICE '3. Verificações de integridade concluídas';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Se tudo estiver OK acima (✅), o sistema está pronto!';
+  RAISE NOTICE 'Se houver alertas (⚠️), verifique as mensagens e corrija.';
   RAISE NOTICE '';
 END $$;
